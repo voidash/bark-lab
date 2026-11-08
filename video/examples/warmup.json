@@ -1,0 +1,12 @@
+{
+  "title": "Bark Lab warm-up",
+  "notes": [
+    {"t": 0.0, "duration": 0.23, "pitch": 261.625565, "amplitude": 1.0},
+    {"t": 0.5, "duration": 0.23, "pitch": 329.627557, "amplitude": 1.0},
+    {"t": 1.0, "duration": 0.23, "pitch": 391.995436, "amplitude": 1.0},
+    {"t": 1.5, "duration": 0.45, "pitch": 523.251131, "amplitude": 1.0},
+    {"t": 2.5, "duration": 0.23, "pitch": 391.995436, "amplitude": 1.0},
+    {"t": 3.0, "duration": 0.23, "pitch": 329.627557, "amplitude": 1.0},
+    {"t": 3.5, "duration": 0.45, "pitch": 261.625565, "amplitude": 1.0}
+  ]
+}

@@ -1,0 +1,5 @@
+.runtime/
+.audio-env/
+output/
+*.mp4
+*.wav
