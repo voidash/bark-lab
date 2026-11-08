@@ -19,6 +19,19 @@ export interface CreatureVisual {
 }
 
 export const CREATURE_VISUALS: Record<string, CreatureVisual> = {
+  "dog": {
+    view: { x0: -26, x1: 27, y0: -22, y1: 24 },
+    silhouette: [[-22, -21], [-22, -10], [-20, 0], [-15, 7], [-11, 13], [-14, 22], [-5, 17], [0, 19], [6, 16], [11, 11], [23, 8], [26, 5], [24, 2], [14, 1], [10, -3], [6, -7], [5, -21]],
+    parts: [{ shade: 0.15, pts: [[5, 11], [6.5, 12], [8, 11], [6.5, 10]] }, { shade: 0.3, pts: [[23, 8], [26, 5], [24, 4], [22, 6]] }],
+    tubes: [
+      { tube: "trachea", path: [[-10, -19], [-8, -10], [-5, -4]], label: "Trachea" },
+      { tube: "pharynx", path: [[-5, -4], [-3, 0], [1, 3]], label: "Pharynx" },
+      { tube: "oral", path: [[1, 3], [10, 3], [23, 2]], label: "Mouth" },
+      { tube: "nasal", path: [[1, 3], [7, 8], [15, 8], [24, 6]], label: "Nose" },
+    ],
+    tubeScale: 1.5,
+    sources: [{ key: "recording", at: [-5, -4], label: "Voice" }],
+  },
   "songbird": {
     view: { x0: -4, x1: 14, y0: -6, y1: 8 },
     silhouette: [[-3.2, -1.2], [-1.6, -3.4], [1.6, -4.6], [5.2, -4.4], [7.8, -2.6], [9.0, -0.4], [9.6, 1.8], [10.4, 2.4], [12.8, 2.6], [10.6, 3.0], [9.8, 3.6], [9.2, 4.6], [7.6, 5.2], [6.0, 4.6], [4.2, 2.8], [2.0, 2.0], [-0.2, 1.6], [-3.6, 1.4], [-3.4, 0.2]],
@@ -71,3 +84,10 @@ export const CREATURE_VISUALS: Record<string, CreatureVisual> = {
     sources: [{ key: "glottis", at: [95, 38], label: "Vocal folds" }, { key: "lips", at: [136, 70], label: "Trunk valve" }],
   },
 };
+
+CREATURE_VISUALS["dog-model"] = {
+  ...CREATURE_VISUALS.dog,
+  sources: [{ key: "glottis", at: [-5, -4], label: "Larynx" }],
+};
+
+CREATURE_VISUALS["dog-physics"] = CREATURE_VISUALS["dog-model"];

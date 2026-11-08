@@ -2,6 +2,7 @@
 //! calibrations reproduce the tables the engine embeds.
 
 use chimera::math::js_round;
+use chimera::creatures::creature_by_id;
 use chimera::phonetics::ipa::tokenize_ipa;
 use chimera::phonetics::planner::{PlanOptions, plan_utterance};
 use std::process::Command;
@@ -23,6 +24,32 @@ fn chimera(args: &[&str]) -> String {
 
 fn tmp(name: &str) -> String {
     format!("{}/{name}", env!("CARGO_TARGET_TMPDIR"))
+}
+
+#[test]
+fn split_creature_exports_each_call_from_rest_with_its_actual_length() {
+    let dir = tmp("dog-split");
+    chimera(&["render", "creature", "--split", "dog", &dir]);
+    let manifest: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(format!("{dir}/dog-clips.json")).unwrap(),
+    ).unwrap();
+    assert_eq!(manifest["creature"], "dog");
+    assert_eq!(manifest["sampleRate"].as_f64(), Some(48000.0));
+    let def = creature_by_id("dog").unwrap();
+    let clips = manifest["clips"].as_array().unwrap();
+    assert_eq!(clips.len(), def.calls.len());
+    for (clip, call) in clips.iter().zip(&def.calls) {
+        assert_eq!(clip["id"], call.id);
+        assert_eq!(clip["file"], format!("dog-{}.wav", call.id));
+        let wav = std::fs::read(format!("{dir}/{}", clip["file"].as_str().unwrap())).unwrap();
+        assert_eq!(&wav[..4], b"RIFF");
+        let samples = (wav.len() - 44) / 2;
+        let seconds = call.keys.last().unwrap().t + 0.5;
+        assert_eq!(samples, js_round(seconds * 48000.0) as usize);
+        assert_eq!(clip["seconds"].as_f64().unwrap(), samples as f64 / 48000.0);
+        assert!(clip["peak"].as_f64().unwrap() > 0.01);
+        assert!(clip["rms"].as_f64().unwrap() > 0.001);
+    }
 }
 
 #[test]

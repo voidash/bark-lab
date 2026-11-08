@@ -1,7 +1,20 @@
-# CHIMERA
+# Bark Lab
 
-A physical-modeling voice synthesizer in the browser. Every sound comes from a simulated
-airway (lungs, vocal folds or syrinx, a branched vocal tract, lips, nose), not from samples.
+Dog voice experiments and sample-based canine performances, built on
+[CHIMERA by Jameson Hodge](https://github.com/jamesondh/chimera-vocal-synth).
+The original MIT license and source history are preserved.
+
+The physical dog source is experimental. The animated dog-band demo uses pitched real
+bark samples and is labelled as a sample-based performance. See [video/README.md](video/README.md)
+for the renderer; the song reference, backing stems and rendered cover are kept out of Git.
+
+![The Bark Lab canine ensemble](video/preview.png)
+
+A voice synthesizer in the browser. Human and original animal voices use simulated
+airways (lungs, vocal folds or syrinx, a branched vocal tract, lips, nose). The default
+**Dog physics** uses pressure-driven tissue masses and an acoustic airway; canine realism
+remains experimental. **Dog reference** plays CC0 recordings for comparison. **Dog model**
+retains the rejected prescribed-pulse baseline. The reference's anatomy is illustrative.
 The engine is Rust, compiled to WebAssembly for an AudioWorklet; the same code runs natively
 for tests and the `chimera` CLI.
 
@@ -13,11 +26,14 @@ for tests and the `chimera` CLI.
   gestures and prosody, with the gestural score and a consonant chart on screen.
 - **Sing**: piano roll with lyrics per note; consonants land before the beat.
 - **Beatbox**: pads and a step sequencer, every drum an articulatory gesture.
-- **Bestiary**: songbird (two-voice syrinx), seal, alligator and elephant.
+- **Bestiary**: songbird (two-voice syrinx), seal, alligator, elephant, a physical dog candidate,
+  a recorded dog reference and the earlier dog baseline.
 - **Duet** (`?show=<id>`): two 3D heads replay a pre-rendered song.
 
-Male, female and child bodies blend continuously. Everything on screen animates from live
-engine state: pressure in the airway, airflow, the vocal folds, spectra and formants.
+Male, female and child bodies blend continuously. Physical voices animate from live engine
+state: airway pressure, airflow, vocal folds, spectra and formants. The recorded Dog shows
+its source amplitude and spectrum alongside illustrative anatomy; it has no simulated pressure.
+See [the physical dog experiment](docs/dog-physics.md) for its mechanism and current limits.
 
 ## Run it
 
@@ -40,6 +56,20 @@ cargo run --release -p chimera-cli -- diagnose       # nasal leakage, formants, 
 cargo run --release -p chimera-cli -- compare csd    # against a real singer (docs/csd-comparison.md)
 bun tools/spectrogram.ts in.wav out.png
 ```
+
+The app opens on **Bestiary → Dog physics**. Try **Bark**, **Howl**, **Yodel**,
+**Bark a tune** and **Howl a tune**; the two tunes play Twinkle's first phrase. Select a
+call under “Keys play” to transpose it from the keyboard, or choose “Held voice” for
+a continuous howl. These are synthetic canine-like sounds awaiting listening validation,
+not calibrated breed models. The yodel is a designed pitch/timbre alternation.
+
+```sh
+cargo run --release -p chimera-cli -- render creature dog-physics out/dog --split
+```
+
+`--split` writes each call independently and `dog-clips.json` with durations, peaks and
+RMS levels, in addition to the combined render. Research and validation notes are in
+[docs/dog-prototype.md](docs/dog-prototype.md).
 
 ## Docs
 

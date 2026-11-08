@@ -25,6 +25,9 @@ async function run(viewport: { width: number; height: number }, tag: string) {
   });
   page.on("pageerror", (e) => errors.push(`[${tag}] pageerror: ${e.message}`));
   await page.goto(url, { waitUntil: "networkidle" });
+  // The dog fork opens on its canine airway. This part of the suite exercises the
+  // original human controls explicitly, rather than relying on the landing mode.
+  await page.getByRole("radio", { name: "Play", exact: true }).click();
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${outDir}/${tag}-0-idle.png` });
   const startBtn = page.getByRole("button", { name: /breathe in and start/i });
@@ -174,6 +177,65 @@ async function run(viewport: { width: number; height: number }, tag: string) {
     return { human: !!e?.latest, creature: !!e?.latestCreature };
   });
   logs.push(`[${tag}] back to play: ${JSON.stringify(human)}`);
+  await page.close();
+}
+
+// A fresh visit must show the dog and start the dog engine, without a manual mode switch.
+{
+  const page = await browser.newPage({ viewport: { width: 1440, height: 980 } });
+  page.on("pageerror", (e) => errors.push(`[dog-start] pageerror: ${e.message}`));
+  await page.goto(url, { waitUntil: "networkidle" });
+  if ((await page.getByRole("radio", { name: "Bestiary", exact: true }).getAttribute("aria-checked")) !== "true") errors.push("[dog-start] Bestiary is not selected on a fresh visit");
+  if ((await page.locator(".specimen.on .specimen-name").textContent())?.trim() !== "Dog physics") errors.push("[dog-start] physical Dog is not selected on a fresh visit");
+  if ((await page.locator(".left .screen-title").textContent()) !== "Dog vocal tract") errors.push("[dog-start] the left screen does not identify the dog vocal tract");
+  if ((await page.getByRole("img", { name: /^Dog vocal tract:/ }).count()) !== 1) errors.push("[dog-start] no accessible dog vocal tract drawing");
+  if (await page.locator(".body-control").count()) errors.push("[dog-start] human body controls are visible on the dog view");
+  if ((await page.getByRole("checkbox", { name: "Sound pressure", exact: true }).count()) !== 1) errors.push("[dog-start] physical voice lacks a pressure toggle");
+  await page.screenshot({ path: `${outDir}/dog-start.png` });
+  await page.getByRole("button", { name: "Start physical dog", exact: true }).click();
+  await page.waitForFunction(() => {
+    // @ts-expect-error debug handle
+    return window.__chimeraEngine?.latestCreature?.t?.id === "dog-physics";
+  });
+  const dog = await page.evaluate(() => {
+    // @ts-expect-error debug handle
+    const t = window.__chimeraEngine.latestCreature.t;
+    return { id: t.id, tubes: Object.keys(t.tubes) };
+  });
+  if (!["trachea", "pharynx", "oral", "nasal"].every((name) => dog.tubes.includes(name))) errors.push(`[dog-start] missing canine airway branches: ${JSON.stringify(dog)}`);
+  logs.push(`[dog-start] creature ${JSON.stringify(dog)}`);
+  for (const id of ["dog-physics", "dog"]) {
+    const physical = id === "dog-physics";
+    if (!physical) {
+      await page.locator(".specimen").filter({ hasText: "Dog reference" }).click();
+      await page.waitForFunction(() => {
+        // @ts-expect-error debug handle
+        return window.__chimeraEngine?.latestCreature?.t?.id === "dog";
+      });
+      if (await page.getByRole("checkbox", { name: "Sound pressure", exact: true }).count()) errors.push("[dog-start] recorded voice exposes a pressure toggle");
+    }
+    for (const name of ["Bark", "Howl", "Yodel"]) {
+      await page.getByRole("button", { name, exact: true }).click();
+      let peak = 0, pressure = false;
+      for (let i = 0; i < 24; i++) {
+        await page.waitForTimeout(50);
+        const sample = await page.evaluate(() => {
+          // @ts-expect-error debug handle
+          const t = window.__chimeraEngine.latestCreature.t;
+          return { rms: t.outRms, source: t.source, pressure: Object.values(t.tubes).some((tube) => (tube as { rms: number[] }).rms.some((v) => v !== 0)) };
+        });
+        peak = Math.max(peak, sample.rms);
+        pressure ||= sample.pressure;
+        if (!physical && sample.pressure) errors.push(`[dog-start] ${name} fabricates airway pressure`);
+        if (physical && sample.source.fault !== 0) errors.push(`[dog-start] ${name} mechanical source fault`);
+        if (!Number.isFinite(sample.source[physical ? "glottis" : "recording"])) errors.push(`[dog-start] ${id} ${name} lacks valid source telemetry`);
+      }
+      if (!(peak > (physical ? 0.001 : 0.005))) errors.push(`[dog-start] ${id} ${name} is silent: ${peak}`);
+      if (physical && !pressure) errors.push(`[dog-start] ${name} lacks physical airway energy`);
+      logs.push(`[dog-start] creature ${id} ${name} peak interval rms ${peak}, pressure ${pressure}`);
+    }
+  }
+  await page.screenshot({ path: `${outDir}/dog-start-running.png` });
   await page.close();
 }
 

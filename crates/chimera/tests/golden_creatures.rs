@@ -3,7 +3,8 @@
 //! several block sizes (the output must not depend on them), plus telemetry snapshots and the
 //! valve sources sample by sample. Fixtures from `bun tools/golden/creatures.ts`.
 mod common;
-use chimera::creatures::{CREATURES, CreatureTelemetry, CreatureVoice, creature_by_id};
+use chimera::creatures::{CreatureTelemetry, CreatureVoice, creature_by_id};
+use chimera::math::{PI, sin};
 use chimera::sources::syrinx::SyrinxLabia;
 use chimera::sources::valves::{Bubble, ClickTrain, LipReed, Whistle};
 use common::*;
@@ -192,13 +193,18 @@ fn preview_telemetry_serialises_like_typescript() {
         assert_key_order(name, &text, &params);
         seen += 1;
     }
-    assert_eq!(seen, CREATURES.len());
+    // These fixtures preserve the original TS registry. Rust-only additions have their own
+    // behavioural and ABI tests; they must not require rewriting historical reference audio.
+    assert_eq!(seen, load("creature-units")["defs"].as_array().unwrap().len());
 }
 
 #[test]
 fn defs_serialise_like_typescript() {
     let u = load("creature-units");
-    let text = serde_json::to_string(&*CREATURES).unwrap();
+    let historical: Vec<_> = u["defs"].as_array().unwrap().iter().map(|r| {
+        creature_by_id(r["id"].as_str().unwrap()).expect("every historical creature remains registered")
+    }).collect();
+    let text = serde_json::to_string(&historical).unwrap();
     let got: Value = serde_json::from_str(&text).unwrap();
     assert!(same_json(&got, &u["defs"]), "defs differ\n{got}\n{}", u["defs"]);
     assert_key_order("def", &text, &["id", "name", "latin", "group", "blurb", "role", "oversample"]);
@@ -214,7 +220,6 @@ fn seq_check(label: &str, got: &[f64], reference: &Value) -> f64 {
 
 #[test]
 fn valves_match_typescript() {
-    use chimera::math::{PI, sin};
     let u = load("creature-units");
     let n = nums(&u["lipDefault"]).len();
     let mut checks = Vec::new();

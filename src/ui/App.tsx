@@ -42,6 +42,7 @@ function TopBar() {
   const volume = useStore((s) => s.volume);
   const setVolume = useStore((s) => s.setVolume);
   const mode = useStore((s) => s.mode);
+  const creature = useStore((s) => s.creature);
   const setMode = useStore((s) => s.setMode);
   const [load, setLoad] = useState(0);
   useEffect(() => {
@@ -52,7 +53,7 @@ function TopBar() {
     <header className="topbar">
       <div className="brand">
         <span className="wordmark">Chimera</span>
-        <span className="tagline">A voice grown from a simulated airway</span>
+        <span className="tagline">{mode === "bestiary" && creature === "dog" ? "Real dog voice · playable bark and howl" : "A voice grown from a simulated airway"}</span>
       </div>
       <Segmented<Mode>
         label="Mode"
@@ -95,7 +96,7 @@ function TopBar() {
             {starting ? "Starting…" : "Start audio"}
           </button>
         )}
-        <a className="repo-link" href="https://github.com/jamesondh/chimera-vocal-synth" target="_blank" rel="noreferrer" aria-label="Source code on GitHub" title="Source code on GitHub">
+        <a className="repo-link" href="https://github.com/voidash/bark-lab" target="_blank" rel="noreferrer" aria-label="Source code on GitHub" title="Source code on GitHub">
           <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true">
             <path
               fill="currentColor"
@@ -112,10 +113,11 @@ function ViewToggles() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const bestiary = useStore((s) => s.mode === "bestiary");
+  const recordedDog = useStore((s) => s.mode === "bestiary" && s.creature === "dog");
   return (
     <div className="view-toggles">
       {!bestiary && <Toggle label="3D" checked={view.threeD} onChange={(v) => setView({ threeD: v })} />}
-      <Toggle label="Sound pressure" checked={view.pressure} onChange={(v) => setView({ pressure: v })} />
+      {!recordedDog && <Toggle label="Sound pressure" checked={view.pressure} onChange={(v) => setView({ pressure: v })} />}
       {!bestiary && <Toggle label="Airflow" checked={view.particles} onChange={(v) => setView({ particles: v })} />}
       <Toggle label={bestiary ? "Labels" : "Measurements"} checked={view.calipers} onChange={(v) => setView({ calipers: v })} />
       {!bestiary && <Toggle label="Grid" checked={view.grid} onChange={(v) => setView({ grid: v })} />}
@@ -134,7 +136,15 @@ function StartPrompt() {
   const creature = useStore((s) => s.creature);
   const setBeatPlaying = useStore((s) => s.setBeatPlaying);
   if (started) return null;
-  const copy = {
+  const copy = mode === "bestiary" && creature === "dog-physics" ? [
+    "A pressure-driven dog voice. Experimental timbre, generated without recordings.",
+    "Start physical dog",
+    "Try Bark, Howl or Yodel. Pitch changes tissue tension; the airway feeds back on the folds.",
+  ] : mode === "bestiary" && creature === "dog" ? [
+    "Real dog barks and a husky howl, ready to play.",
+    "Start dog voice",
+    "Try Bark, Howl or Yodel, then shape the sound with the controls.",
+  ] : {
     bestiary: ["Each animal's sound comes from a simulation of its own sound source and airway.", "Start and hear a call", "Then play its calls, or hold the keys to sustain it at a pitch."],
     beatbox: ["Every drum here is a mouth sound: lips, tongue and larynx pushing, sealing and sucking air.", "Start the beat", "Then edit the pattern, tap the pads, or hum a bass note on the keys."],
     speak: ["Every sound here is produced by simulating air moving through a throat, mouth and nose.", "Start the voice", "Then type something and press Speak, or tap a sound in the chart."],
@@ -166,17 +176,19 @@ function StartPrompt() {
 /** The tall left screen: the face (or the creature) with its overlays. */
 function LeftScreen() {
   const mode = useStore((s) => s.mode);
+  const creature = useStore((s) => s.creature);
   const body = useStore((s) => s.body);
   const threeD = useStore((s) => s.view.threeD);
   const bestiary = mode === "bestiary";
+  const dog = bestiary && creature.startsWith("dog");
   const Face = threeD ? AnatomyView3D : AnatomyView;
   return (
     <Screen
       className="left"
       focus
-      title={bestiary ? "Creature" : "Vocal tract"}
-      sub={bestiary ? "Airway / live" : `${bodyLabel(body)} / ${threeD ? "3D" : "midsagittal"}`}
-      label={bestiary ? "Live creature airway" : "Live vocal tract"}
+      title={dog ? "Dog vocal tract" : bestiary ? "Creature" : "Vocal tract"}
+      sub={dog ? (creature === "dog" ? "Recorded voice / schematic" : "Physical folds / acoustic airway") : bestiary ? "Airway / live" : `${bodyLabel(body)} / ${threeD ? "3D" : "midsagittal"}`}
+      label={dog ? "Live dog vocal tract" : bestiary ? "Live creature airway" : "Live vocal tract"}
       tools={<ViewToggles />}
     >
       <Suspense fallback={null}>

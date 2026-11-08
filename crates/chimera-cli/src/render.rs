@@ -25,6 +25,7 @@ use chimera::phonetics::songs::DEMO_SONGS;
 use chimera::phonetics::syllables::lyrics_to_syllables;
 use chimera::phonetics::{Intonation, Syllable};
 use chimera::voice::human_voice::{HumanVoice, SCOPE_POINTS, SourcePatch, VoiceTelemetry};
+use serde_json::json;
 use std::io::Read;
 use std::time::Instant;
 
@@ -677,10 +678,24 @@ pub fn beatbox(ctx: &Ctx, a: &[String]) -> Result<(), String> {
 }
 
 /// A creature's sustained note and calls; level, stability and pitch.
-/// `render creature [creatureId] [outdir]`
+/// `render creature [creatureId] [outdir] [--split]`
 pub fn creature(ctx: &Ctx, a: &[String]) -> Result<(), String> {
-    let id = arg(a, 0, "songbird");
-    let out_dir = arg(a, 1, "out/creatures");
+    let mut split = false;
+    let mut positional = Vec::new();
+    for value in a {
+        if value == "--split" && !split {
+            split = true;
+        } else if value.starts_with("--") {
+            return Err(format!("unknown or repeated creature option {value:?}"));
+        } else {
+            positional.push(value.as_str());
+        }
+    }
+    if positional.len() > 2 {
+        return Err("usage: render creature [creatureId] [outdir] [--split]".into());
+    }
+    let id = positional.first().copied().unwrap_or("songbird");
+    let out_dir = positional.get(1).copied().unwrap_or("out/creatures");
     let def = creature_by_id(id).ok_or_else(|| {
         format!(
             "unknown creature {id}; have {}",
@@ -737,16 +752,39 @@ pub fn creature(ctx: &Ctx, a: &[String]) -> Result<(), String> {
             fixed(est.aperiodicity, 2)
         );
     }
+    let mut clips = Vec::new();
+    let mut split_ms = 0.0;
     for call in &def.calls {
         v.play_call_id(call.id, None, 1.0);
         let dur = call.keys[call.keys.len() - 1].t + 0.5;
         render_for(&mut v, &mut out, dur);
+        if split {
+            let split_start = Instant::now();
+            // Each comparison clip starts with the same resting state, independent of the
+            // preceding call's parameter smoothing and residual airway energy.
+            let mut solo = CreatureVoice::new(def, FS, &[]);
+            solo.play_call_id(call.id, None, 1.0);
+            let mut audio = Vec::new();
+            render_for(&mut solo, &mut audio, dur);
+            let filename = format!("{id}-{}.wav", call.id);
+            ctx.write_wav(&format!("{out_dir}/{filename}"), &audio)?;
+            let rms = (audio.iter().map(|&x| f64::from(x).powi(2)).sum::<f64>() / audio.len() as f64).sqrt();
+            clips.push(json!({"id": call.id, "name": call.name, "file": filename,
+                "seconds": audio.len() as f64 / FS, "peak": peak(&audio), "rms": rms}));
+            split_ms += ms_since(split_start);
+        }
     }
-    let ms = ms_since(t);
+    let ms = ms_since(t) - split_ms;
     let total = out.len() as f64;
     let bad = out.iter().filter(|x| !x.is_finite()).count();
     let file = format!("{out_dir}/{id}.wav");
     ctx.write_wav(&file, &out)?;
+    if split {
+        let path = format!("{out_dir}/{id}-clips.json");
+        let manifest = json!({"creature": id, "sampleRate": FS, "clips": clips});
+        let bytes = serde_json::to_vec_pretty(&manifest).map_err(|e| format!("{path}: {e}"))?;
+        std::fs::write(&path, bytes).map_err(|e| format!("{path}: {e}"))?;
+    }
     println!(
         "{}: {} s in {} ms ({}% RT, internal {} Hz)  peak {}  non-finite {bad}",
         def.name,

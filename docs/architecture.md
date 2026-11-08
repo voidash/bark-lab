@@ -9,10 +9,21 @@ ambitious. Sophisticated throat, lips, tongue modeling. Different animals: human
 etc. Tonal and percussive (beatboxing). Beautiful visuals/diagrams, dynamic animations based on
 params."
 
-**Not built (yet):** the design's wider bestiary (only songbird, seal, alligator and elephant
-exist), the two-mass vocal folds, an IPA chart mode, the app-side EQ/reverb/limiter chain and
+**Not built (yet):** the design's wider bestiary (songbird, seal, alligator, elephant and dog
+experiments exist), two-mass folds for the human voice, an IPA chart mode, the app-side EQ/reverb/limiter chain and
 in-app WAV export (the CLI renders WAVs; the app has a close-mic chain in WebAudio). Treat the
 code as the truth where this file disagrees.
+
+The default `dog-physics` candidate uses bilateral two-mass tissue dynamics driven by
+sub/supraglottal pressure and coupled to the acoustic airway. Collision, detuning and
+damping can produce irregular phonation. This is an initial calibration, not measured
+canine anatomy. See [dog-physics.md](dog-physics.md).
+
+The `dog` reference is an explicit recorded-source exception: CC0 bark and husky howl PCM,
+linear resampling, a crossfaded sustain loop and existing call automation. Its tract is
+illustrative, never acoustically stepped; pressure telemetry remains zero. `dog-model`
+retains the user-rejected physical prototype for further research. Source provenance is in
+`crates/chimera/src/creatures/data/README.md`.
 
 ## Overview
 

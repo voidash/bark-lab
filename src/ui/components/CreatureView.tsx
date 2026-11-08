@@ -89,6 +89,8 @@ function fmtParam(v: number, p: CreatureDef["params"][number]): { value: string;
  * four parameters as readouts across the bottom.
  */
 export function CreatureView() {
+  const creature = useStore((s) => s.creature);
+  const name = creatureById(creature)?.name ?? "Creature";
   const glyph = useRef<{ peak: Record<string, number>; phase: Record<string, number> }>({ peak: {}, phase: {} });
   const ref = usePhosphor(({ ctx, w, h, dt }) => {
     const st = useStore.getState();
@@ -97,6 +99,7 @@ export function CreatureView() {
     const vis = def.visual;
     const geo = geometry(def);
     const live = liveTelemetry(def.id);
+    const acoustic = live && def.id !== "dog";
     const tele = live ?? previewTelemetry(def, st.cparams[def.id]);
     // a narrow screen (a phone) stacks the title and status, and puts the readouts two by two
     const compact = w < 560;
@@ -135,9 +138,9 @@ export function CreatureView() {
       for (let k = 0; k < n; k++) {
         const { p, nx, ny } = frame(((k + 0.5) / n) * tg.length);
         const r = half(k);
-        const lvl = live && st.view.pressure ? Math.pow(pressureLevel(data.rms[k] * 0.6), 0.85) : 0;
+        const lvl = acoustic && st.view.pressure ? Math.pow(pressureLevel(data.rms[k] * 0.6), 0.85) : 0;
         const [x0, y0] = S([p[0] + nx * r, p[1] + ny * r]), [x1, y1] = S([p[0] - nx * r, p[1] - ny * r]);
-        seg(ctx, x0, y0, x1, y1, live ? heat(lvl) : V.blueDim, 1, { alpha: live ? 0.35 + 0.65 * lvl : 0.6 });
+        seg(ctx, x0, y0, x1, y1, acoustic ? heat(lvl) : V.blueDim, 1, { alpha: acoustic ? 0.35 + 0.65 * lvl : 0.6 });
       }
       if (tg.label && tg.inView) {
         const m = S(pointAt(tg, tg.length * 0.5));
@@ -228,5 +231,9 @@ export function CreatureView() {
       else if (f.unit) label(ctx, f.unit.toUpperCase(), cx, cy + 32 + big, { size: 10, color, ls: 0.14, alpha: 0.7 });
     });
   });
-  return <canvas ref={ref} className="creature-canvas" aria-label="Creature airway: its outline, its airways lit by sound pressure, and its sound sources" role="img" />;
+  const description = creature === "dog"
+    ? "Dog vocal tract: schematic anatomy and recorded vocal source"
+    : creature === "dog-physics" ? "Dog vocal tract: pressure-driven vocal folds, acoustic airway and live pressure"
+    : `${name} airway: its outline, airway pressure and sound sources`;
+  return <canvas ref={ref} className="creature-canvas" aria-label={description} role="img" />;
 }

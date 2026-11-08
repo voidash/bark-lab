@@ -73,6 +73,7 @@ function Calls({ def }: { def: CreatureDef }) {
         ))}
       </div>
       <p className="creature-blurb">{def.blurb}</p>
+      {(live?.source.fault ?? 0) > 0 && <p className="error" role="alert">The physical voice became unstable and stopped. Select another voice, then return to restart it.</p>}
     </div>
   );
 }
@@ -125,7 +126,7 @@ export function BestiaryRight() {
       <Screen className="s-cparams" title="Controls">
         {def && <Params def={def} />}
       </Screen>
-      <Screen className="s-airway" title="Airway" sub="Each tube unrolled">
+      <Screen className="s-airway" title="Airway" sub={creature === "dog" ? "Illustrative geometry" : "Each tube unrolled"}>
         <CreatureTubes />
       </Screen>
       <Screen className="s-keys s-keys-compact" title="Keys" sub="The held voice or a call, at the key's pitch">

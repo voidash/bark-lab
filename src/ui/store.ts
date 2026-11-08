@@ -132,7 +132,7 @@ export const useStore = create<State>((set, get) => ({
   hold: false,
   heldNotes: [],
   view: { pressure: true, particles: true, grid: false, calipers: true, threeD: false },
-  mode: "play",
+  mode: "bestiary",
   setMode: (m) => {
     const prev = get().mode;
     if (prev === m) return;
@@ -163,7 +163,7 @@ export const useStore = create<State>((set, get) => ({
     }
     updateGate(get());
   },
-  creature: "songbird",
+  creature: "dog-physics",
   cparams: {},
   keyCall: null,
   setKeyCall: (id) => {

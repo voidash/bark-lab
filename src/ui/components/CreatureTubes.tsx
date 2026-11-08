@@ -9,11 +9,13 @@ const a2d = (A: number) => 2 * Math.sqrt(Math.max(0, A) / Math.PI);
 
 /** Each airway tube unrolled into a lane: one ring per section (shared diameter scale), lit by sound pressure. */
 export function CreatureTubes() {
+  const recordedDog = useStore((s) => s.creature === "dog");
   const ref = usePhosphor(({ ctx, w, h }) => {
     const st = useStore.getState();
     const def = creatureById(st.creature);
     if (!def) return;
     const live = liveTelemetry(def.id);
+    const acoustic = live && def.id !== "dog";
     const tele = live ?? previewTelemetry(def, st.cparams[def.id]);
     const lanes = def.visual.tubes.filter((t) => tele.tubes[t.tube]);
     if (!lanes.length) return;
@@ -34,14 +36,14 @@ export function CreatureTubes() {
         const x = x0 + (k + 0.5) * dx;
         topL.push([x, y - r(k)]);
         botL.push([x, y + r(k)]);
-        const lv = live ? Math.pow(pressureLevel(data.rms[k] * 0.6), 0.85) : 0;
+        const lv = acoustic ? Math.pow(pressureLevel(data.rms[k] * 0.6), 0.85) : 0;
         const p = new Path2D();
         p.ellipse(x, y, Math.max(1, r(k) * 0.28), r(k), 0, 0, Math.PI * 2);
-        beam(ctx, p, live ? heat(lv) : V.blueDim, 1, { alpha: live ? 0.35 + 0.65 * lv : 0.6 });
+        beam(ctx, p, acoustic ? heat(lv) : V.blueDim, 1, { alpha: acoustic ? 0.35 + 0.65 * lv : 0.6 });
       }
       beamPts(ctx, topL, V.blue, 1.1);
       beamPts(ctx, botL, V.blue, 1.1);
     });
   });
-  return <canvas ref={ref} className="instrument-canvas" aria-label="Airway tubes unrolled, lit by sound pressure" role="img" />;
+  return <canvas ref={ref} className="instrument-canvas" aria-label={recordedDog ? "Schematic dog airway tubes, illustrative geometry" : "Airway tubes unrolled, lit by sound pressure"} role="img" />;
 }

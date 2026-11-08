@@ -1,0 +1,52 @@
+{
+  "createdUtc": "2026-11-08T13:08:52.752728+00:00",
+  "creator": "Codex GPT-6 session /root",
+  "files": [
+    {
+      "file": "dog-bark.pcm",
+      "source": {
+        "name": "bark",
+        "page": "https://freesound.org/people/kwahmah_02/sounds/277058/",
+        "preview": "https://cdn.freesound.org/previews/277/277058_4486188-hq.mp3",
+        "licence": "CC0 1.0 verified in source HTML",
+        "bytes": 6864,
+        "sha256": "af621c68568e6c5178d38e2a464eddd21be8b5822475b29f5ebfe10f5feb1a25"
+      },
+      "sourceTimeSeconds": [
+        0,
+        null
+      ],
+      "sampleRate": 24000,
+      "channels": 1,
+      "format": "signed PCM16 little endian, no header",
+      "frames": 9336,
+      "bytes": 18672,
+      "peakNormalization": 0.85,
+      "fadeFrames": 48,
+      "sha256": "f0751650440fbb230f60962cadedd6baf4a1c05f342bfb5e257b2286dfc74250"
+    },
+    {
+      "file": "dog-howl.pcm",
+      "source": {
+        "name": "howl",
+        "page": "https://freesound.org/people/simcotter/sounds/115357/",
+        "preview": "https://cdn.freesound.org/previews/115/115357_2024015-hq.mp3",
+        "licence": "CC0 1.0 verified in source HTML",
+        "bytes": 472080,
+        "sha256": "7d2cc10ee4688c5dd380ee0731315366586a0e946aa7bfc7669c34b793d5afa6"
+      },
+      "sourceTimeSeconds": [
+        18.55,
+        20.75
+      ],
+      "sampleRate": 24000,
+      "channels": 1,
+      "format": "signed PCM16 little endian, no header",
+      "frames": 52800,
+      "bytes": 105600,
+      "peakNormalization": 0.85,
+      "fadeFrames": 480,
+      "sha256": "a4495b01514021f4dac3e3a41b04419b917dd669f30a129c9b7923d049cd5f75"
+    }
+  ]
+}
