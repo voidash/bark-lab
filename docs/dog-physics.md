@@ -5,7 +5,11 @@ review after listening feedback. Original workspace /Users/cdjk/github/dog/chime
 Review interface: http://127.0.0.1:58071/dog-physics/. Native outputs are the Rust source
 and independent WAVs, inventoried in the research directory's README.
 
-`dog-physics` is the default. Four tissue masses (lower/upper edges of left/right folds)
+Update 2026-11-09: a selectable [six-mass body–cover candidate](dog-body-cover.md)
+now lives beside this legacy source in the actual lab. The description below
+records the legacy model; its rejected timbre has not been validated by the new tests.
+
+`dog-physics` is the default. Its legacy source has four tissue masses (lower/upper edges of left/right folds)
 obey mass–spring–damper equations with cubic restoring forces and collision. Quasi-steady
 jet separation determines aerodynamic forces. RK4 advances the tissue; its minimum
 aperture drives the acoustic network's glottal port. Instantaneous tracheal/pharyngeal

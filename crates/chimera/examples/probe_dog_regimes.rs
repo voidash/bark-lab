@@ -5,15 +5,17 @@ use serde_json::json;
 
 fn main() -> Result<(), String> {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    let focus = args.as_slice() == ["--focus"];
-    if !args.is_empty() && !focus {
-        return Err("usage: probe_dog_regimes [--focus]".into());
+    let focus = args.iter().any(|a| a == "--focus");
+    let canine = args.iter().any(|a| a == "--canine");
+    if args.iter().any(|a| a != "--focus" && a != "--canine") || args.len() > 2 {
+        return Err("usage: probe_dog_regimes [--focus] [--canine]".into());
     }
     let def = creature_by_id("dog-physics").ok_or("physical dog missing")?;
     let index = |key| {
         def.param_index(key)
             .ok_or_else(|| format!("missing control {key}"))
     };
+    let source_model = index("sourceModel")?;
     let (rough, throat, pressure, tone, mouth, pitch, damping) = (
         index("rough")?,
         index("throat")?,
@@ -48,6 +50,7 @@ fn main() -> Result<(), String> {
                         def,
                         48000.0,
                         &[
+                            (source_model, if canine { 1.0 } else { 0.0 }),
                             (rough, detune),
                             (throat, load),
                             (pressure, breath),
@@ -95,7 +98,7 @@ fn main() -> Result<(), String> {
                         );
                     }
                     periods.sort_by(f64::total_cmp);
-                    results.push(json!({"detuning":detune,"throat":load,"pressure":breath,"damping":damp,"rms":rms,"f0":p.f0,"aperiodicity":p.aperiodicity,"medianAperiodicity":periods[1],"fault":fault}));
+                    results.push(json!({"sourceModel":if canine {1} else {0},"detuning":detune,"throat":load,"pressure":breath,"damping":damp,"rms":rms,"f0":p.f0,"aperiodicity":p.aperiodicity,"medianAperiodicity":periods[1],"fault":fault}));
                 }
             }
         }

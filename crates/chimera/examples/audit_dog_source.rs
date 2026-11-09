@@ -80,14 +80,20 @@ fn write_wav(path: &Path, audio: &[f32], gain: f64) -> Result<(), String> {
 
 fn run() -> Result<(), String> {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    if args.len() != 1 {
-        return Err("usage: audit_dog_source OUTPUT".into());
+    if args.len() != 1 && !(args.len() == 2 && args[1] == "--canine") {
+        return Err("usage: audit_dog_source OUTPUT [--canine]".into());
     }
     let root = Path::new(&args[0]);
     fs::create_dir_all(root).map_err(|e| format!("{}: {e}", root.display()))?;
     let def = creature_by_id("dog-physics").ok_or("physical dog missing")?;
     let mut reports = Vec::new();
-    for call in ["bark", "howl"] {
+    let calls: &[&str] = if args.len() == 2 {
+        &["bark", "howl", "roughBark"]
+    } else {
+        &["bark", "howl"]
+    };
+    for &call in calls {
+        let short = call != "howl";
         let mut cases = Vec::new();
         for (name, frozen, noise) in [
             ("full", false, true),
@@ -95,7 +101,14 @@ fn run() -> Result<(), String> {
             ("frozen", true, true),
             ("frozen-no-noise", true, false),
         ] {
-            let mut voice = CreatureVoice::new(def, 48000.0, &[]);
+            let mode = def
+                .param_index("sourceModel")
+                .ok_or("source version control missing")?;
+            let mut voice = CreatureVoice::new(
+                def,
+                48000.0,
+                &[(mode, if args.len() == 2 { 1.0 } else { 0.0 })],
+            );
             if frozen {
                 let glottis = voice
                     .sim
@@ -119,10 +132,10 @@ fn run() -> Result<(), String> {
                 .ok_or("dog network missing")?
                 .noise_scale = if noise { 1.0 } else { 0.0 };
             voice.play_call_id(call, None, 1.0);
-            let mut audio = vec![0.0; if call == "bark" { 38400 } else { 153600 }];
+            let mut audio = vec![0.0; if short { 38400 } else { 153600 }];
             let mut source = Vec::with_capacity(32);
             let mut trace = Vec::new();
-            let trace_start = if call == "bark" { 2880 } else { 48000 };
+            let trace_start = if short { 2880 } else { 48000 };
             let (mut min_area, mut max_area, mut max_speed) = (f64::INFINITY, 0.0f64, 0.0f64);
             for (sample, block) in audio.chunks_mut(1).enumerate() {
                 voice.render(block);
@@ -167,7 +180,7 @@ fn run() -> Result<(), String> {
             if !audio.iter().all(|v| v.is_finite()) {
                 return Err(format!("non-finite audio in {call}/{name}"));
             }
-            let at = if call == "bark" { 1920 } else { 48000 };
+            let at = if short { 1920 } else { 48000 };
             let frame: Vec<_> = audio[at..at + 4096].iter().map(|&v| f64::from(v)).collect();
             let pitch = yin_pitch(
                 &frame,
@@ -178,7 +191,7 @@ fn run() -> Result<(), String> {
                     ..Default::default()
                 },
             );
-            let window = if call == "bark" {
+            let window = if short {
                 &audio[480..12000]
             } else {
                 &audio[38400..86400]
@@ -197,7 +210,7 @@ fn run() -> Result<(), String> {
             reports.push(report);
         }
     }
-    let report = json!({"method":"Exact live call plans. Crossed fold-motion/noise ablations, common gain within each call. Frozen aperture follows configured rest area without tissue dynamics; changing source changes flow/feedback, so RMS differences are not an additive noise fraction. YIN on near-silence is not evidence of a periodic source. These are diagnostics, not alternate canine voices.","cases":reports});
+    let report = json!({"sourceModel":if args.len() == 2 {"canine-body-cover"} else {"legacy-four-mass"},"method":"Exact live call plans. Crossed fold-motion/noise ablations, common gain within each call. Frozen aperture follows configured rest area without tissue dynamics; changing source changes flow/feedback, so RMS differences are not an additive noise fraction. YIN on near-silence is not evidence of a periodic source. These are diagnostics, not alternate canine voices.","cases":reports});
     fs::write(
         root.join("source-audit.json"),
         serde_json::to_string_pretty(&report).map_err(|e| e.to_string())?,

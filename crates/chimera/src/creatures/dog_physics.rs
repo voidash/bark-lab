@@ -2,9 +2,10 @@
 use super::build::{CMH2O, fill_areas};
 use super::dog;
 use super::mammal::{MammalAirway, mammal_noise};
-use super::types::{CreatureDef, CreatureSim, ParamDef};
+use super::types::{CallDef, CallKey, CreatureDef, CreatureSim, Curve, ParamDef};
 use crate::airway::network::{AirwayNetwork, Tube};
 use crate::math::{PI, sin};
+use crate::sources::canine_cover::CanineCover;
 use crate::sources::two_mass::{FoldError, TwoMassFolds};
 
 /// Candidate irregular-phonation regime found by probe_dog_regimes. It must still
@@ -25,10 +26,14 @@ const TONGUE_HEIGHT: usize = 12;
 const TONGUE_POSITION: usize = 13;
 const TONGUE_ROOT: usize = 14;
 const LARYNX_DROP: usize = 15;
+const SOURCE_MODEL: usize = 16;
 
 struct PhysicalDog {
     a: MammalAirway,
     folds: TwoMassFolds,
+    cover: CanineCover,
+    use_cover: bool,
+    fs: f64,
     tubes: Vec<(&'static str, Tube)>,
     fault: Option<FoldError>,
 }
@@ -47,6 +52,9 @@ fn create(fs: f64) -> Box<dyn CreatureSim> {
         a,
         tubes,
         folds: TwoMassFolds::new(fs),
+        cover: CanineCover::new(fs),
+        use_cover: false,
+        fs,
         fault: None,
     })
 }
@@ -68,12 +76,26 @@ impl CreatureSim for PhysicalDog {
     fn control(&mut self, p: &[f64], gate: f64, _dt: f64) {
         // These are initial reduced-model controls, not an anatomical inversion. Frequency
         // emerges from the tissue/airway system and can depart from the nominal key pitch.
-        if let Err(error) = self.folds.configure(
-            p[0] / 170.0,
-            1.0 - 0.55 * p[2],
-            (0.045 - 0.03 * p[3] - 0.01 * p[2].abs()) * p[GAP],
-            (0.9 - 0.2 * p[3] - 0.25 * p[2].abs()) * p[5],
-        ) {
+        let use_cover = p[SOURCE_MODEL] >= 0.5;
+        if use_cover != self.use_cover {
+            // Explicit model selection starts the selected tissue at rest. This
+            // is not an automatic recovery from a fault: faults remain latched.
+            if use_cover {
+                self.cover = CanineCover::new(self.fs);
+            } else {
+                self.folds = TwoMassFolds::new(self.fs);
+            }
+            self.use_cover = use_cover;
+        }
+        let asymmetry = 1.0 - 0.55 * p[2];
+        let rest = (0.045 - 0.03 * p[3] - 0.01 * p[2].abs()) * p[GAP];
+        let damping = (0.9 - 0.2 * p[3] - 0.25 * p[2].abs()) * p[5];
+        let result = if self.use_cover {
+            self.cover.configure(p[0], asymmetry, rest, damping)
+        } else {
+            self.folds.configure(p[0] / 170.0, asymmetry, rest, damping)
+        };
+        if let Err(error) = result {
             self.fault = Some(error);
         }
         let a = &mut self.a;
@@ -130,7 +152,12 @@ impl CreatureSim for PhysicalDog {
         }
         let sub = self.a.net.p[self.a.trachea.last_node()];
         let supra = self.a.net.p[self.a.pharynx.first_node()];
-        match self.folds.step(sub, supra) {
+        let result = if self.use_cover {
+            self.cover.step(sub, supra)
+        } else {
+            self.folds.step(sub, supra)
+        };
+        match result {
             Ok(area) => self.a.net.set_port_area(self.a.glottis, area),
             Err(error) => {
                 self.fault = Some(error);
@@ -142,18 +169,56 @@ impl CreatureSim for PhysicalDog {
 
     fn source_state(&self, out: &mut Vec<(&'static str, f64)>) {
         out.clear();
-        out.push(("glottis", (self.folds.speed() / 100.0).min(1.0)));
+        let speed = if self.use_cover {
+            self.cover.speed()
+        } else {
+            self.folds.speed()
+        };
+        out.push(("glottis", (speed / 100.0).min(1.0)));
         // A fault is latched and exposed, never hidden by resetting the mechanical state.
         out.push(("fault", if self.fault.is_some() { 1.0 } else { 0.0 }));
-        let [left_lower, left_upper, right_lower, right_upper] = self.folds.displacements();
+        let [left_lower, left_upper, right_lower, right_upper] = if self.use_cover {
+            self.cover.displacements()
+        } else {
+            self.folds.displacements()
+        };
+        let body = if self.use_cover {
+            self.cover.body_displacements()
+        } else {
+            [0.0, 0.0]
+        };
         out.extend([
             ("leftLower", left_lower),
             ("leftUpper", left_upper),
             ("rightLower", right_lower),
             ("rightUpper", right_upper),
-            ("glottalArea", self.folds.area),
-            ("restArea", self.folds.rest_area()),
-            ("foldLength", self.folds.length()),
+            (
+                "glottalArea",
+                if self.use_cover {
+                    self.cover.area
+                } else {
+                    self.folds.area
+                },
+            ),
+            (
+                "restArea",
+                if self.use_cover {
+                    self.cover.rest_area()
+                } else {
+                    self.folds.rest_area()
+                },
+            ),
+            (
+                "foldLength",
+                if self.use_cover {
+                    self.cover.length()
+                } else {
+                    self.folds.length()
+                },
+            ),
+            ("sourceModel", if self.use_cover { 1.0 } else { 0.0 }),
+            ("leftBody", body[0]),
+            ("rightBody", body[1]),
             ("glottalFlow", self.a.net.u[self.a.glottis]),
             ("lungPressure", self.a.net.p[self.a.lungs] / CMH2O),
             (
@@ -185,7 +250,7 @@ pub fn def() -> CreatureDef {
     def.id = "dog-physics";
     def.name = "Dog physics";
     def.latin = "Air-driven tissue model";
-    def.blurb = "Pressure drives four coupled vocal-fold masses, collisions and the acoustic airway. No recordings play in this voice. Experimental canine timbre; pitch is nominal, not yet calibrated.";
+    def.blurb = "Breath drives vocal-fold tissue, collisions and the acoustic airway. Compare the legacy source with a six-mass canine-informed body–cover candidate. Pitch is nominal; dog likeness still needs listening validation.";
     def.role = "Physical vocal folds + airway · no recorded excitation";
     def.params[0].label = "Nominal pitch";
     def.params[0].max = 1000.0;
@@ -226,6 +291,13 @@ pub fn def() -> CreatureDef {
             .unit("cm")
             .smooth(0.03),
     ]);
+    // Version choice, not a blend of oscillators. Legacy stays the default until
+    // the new source passes listening; the lab exposes an explicit A/B selector.
+    def.params.push(
+        ParamDef::new("sourceModel", "Model", 0.0, 1.0, 0.0)
+            .digits(0)
+            .smooth(0.001),
+    );
     for call in &mut def.calls {
         if call.id == "bark" || call.id == "barkTune" {
             for key in &mut call.keys {
@@ -258,6 +330,39 @@ pub fn def() -> CreatureDef {
             }
         }
     }
+    // A separate, explicit experiment: the legacy gestures are not calibrated
+    // for this tissue. The bounded body-cover grid found irregular phonation at
+    // these effective controls. This is not a recording fit or a validated bark.
+    def.calls.push(CallDef::new(
+        "roughBark",
+        "Rough bark test",
+        "Six-mass body–cover source with a short breath pulse; experimental dog likeness",
+        Some(330.0),
+        vec![
+            CallKey::new(
+                0.0,
+                &[
+                    ("sourceModel", 1.0),
+                    ("gate", 0.0),
+                    ("pitch", 330.0),
+                    ("pressure", 24.0),
+                    ("rough", 0.85),
+                    ("damping", 0.7),
+                    ("tone", 0.0),
+                    ("throat", 0.3),
+                    ("mouth", 0.65),
+                    ("aspiration", 0.05),
+                    ("gap", 1.0),
+                    ("nasal", 0.0),
+                ],
+            )
+            .curve(Curve::Step),
+            CallKey::new(0.012, &[("gate", 1.0)]),
+            CallKey::new(0.18, &[("gate", 1.0), ("pitch", 330.0)]),
+            CallKey::new(0.24, &[("gate", 0.7), ("pitch", 280.0), ("mouth", 0.3)]),
+            CallKey::new(0.30, &[("gate", 0.0), ("mouth", 0.12)]),
+        ],
+    ));
     def.create = create;
     def.resolved()
 }

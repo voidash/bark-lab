@@ -19,6 +19,7 @@ pub mod anatomy {
 }
 
 pub mod sources {
+    pub mod canine_cover;
     pub mod glottis;
     pub mod syrinx;
     pub mod two_mass;

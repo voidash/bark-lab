@@ -18,6 +18,9 @@ The default `dog-physics` candidate uses bilateral two-mass tissue dynamics driv
 sub/supraglottal pressure and coupled to the acoustic airway. Collision, detuning and
 damping can produce irregular phonation. This is an initial calibration, not measured
 canine anatomy. See [dog-physics.md](dog-physics.md).
+An explicit lab selector also offers a six-mass canine-informed body–cover
+candidate; its measured inputs and reduction assumptions are in
+[dog-body-cover.md](dog-body-cover.md). It is not an MRI continuum reproduction.
 
 The `dog` reference is an explicit recorded-source exception: CC0 bark and husky howl PCM,
 linear resampling, a crossfaded sustain loop and existing call automation. Its tract is
