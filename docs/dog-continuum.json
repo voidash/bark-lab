@@ -1,0 +1,53 @@
+{
+  "status": "reproduction specification; no continuum solver or MRI reconstruction implemented",
+  "source": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8547019/",
+  "doi": "10.1115/1.4052226",
+  "scope": "Excised canine larynx phonation; excludes supraglottal tract; not a natural bark or whole-head MRI model",
+  "publishedGeometry": {
+    "specimenMassKg": 20,
+    "mriVoxelMm": [0.2, 0.2, 0.2],
+    "medialSurfaceLongitudinalMm": 12.5,
+    "medialSurfaceVerticalMm": 3.5,
+    "tetrahedraPerFold": 20643,
+    "fullSegmentationAvailableLocally": false,
+    "warning": "Two surface dimensions do not define a subject-specific solid; no invented mesh is a reconstruction"
+  },
+  "publishedMaterial": {
+    "model": "Transversely isotropic linear viscoelastic, body-cover, Kelvin-Voigt",
+    "calibration": "Inverse indentation fit to averages from 11 canine larynges; not measurements on the MRI specimen itself",
+    "densityKgPerM3": 1040,
+    "body": {"transverseYoungPa": 4760, "longitudinalYoungPa": 95240, "longitudinalShearPa": 23810, "transversePoisson": 0.9, "longitudinalPoisson": 0.0},
+    "cover": {"superiorTransverseYoungPa": 1330, "longitudinalYoungPa": 26700, "longitudinalShearPa": 6680, "transversePoisson": 0.9, "longitudinalPoisson": 0.0, "verticalStiffnessGradientPaPerM": 430000},
+    "viscosityTensor": null,
+    "warning": "Anisotropic Poisson entries must not be used as an isotropic Poisson ratio. Tensor conventions, stiffness-gradient direction and viscous coefficients require verification before implementation. Continuum moduli cannot replace lumped springs directly."
+  },
+  "publishedSimulation": {
+    "inletPressurePa": [1200, 1800],
+    "outlet": "Open environment; no supraglottal tract",
+    "flow": "3-D unsteady viscous incompressible Navier-Stokes; sharp-interface immersed boundary on Cartesian grid",
+    "solid": "Finite elements; hard-wall contact; cartilage attachment surfaces fixed",
+    "artificialMinimumGapMm": 0.16,
+    "timeStepSeconds": 0.00000055,
+    "processors": 128,
+    "reportedCpuHoursPerCycle": [5200, 6200],
+    "reportedWallHoursPerCycle": [40, 48],
+    "interpretation": "Historical hardware/software cost; not an estimate of modern solver performance or a guaranteed browser speed limit"
+  },
+  "requiredInputsNotYetVerified": [
+    "MRI volume or author segmentation with coordinate units and layer/cartilage labels",
+    "Solid/flow meshes or complete dimensions, inlet/outlet domains and refinement recipe",
+    "Full anisotropic elastic/viscous tensor conventions and all fluid coefficients",
+    "Coupling, contact, startup and convergence implementation details",
+    "Numerical arrays for indentation and experimental flow/vibration comparisons",
+    "Licence and reproducible source/version for any reused data or solver"
+  ],
+  "availabilityAudit": "Paper and author-publication links inspected; no downloadable subject mesh/raw MRI/solver package verified in this audit. Direct PMC browser challenge, Europe PMC XML 500 and SDU PDF 403 limited additional retrieval. This is not evidence that data do not exist or cannot be requested.",
+  "proposedStages": [
+    {"id": "data", "gate": "Obtain and validate actual subject geometry and constitutive inputs; record source, licence, units and checksums"},
+    {"id": "solid", "gate": "Reproduce indentation and mesh/time convergence; verify modes and energy balance before adding flow"},
+    {"id": "fsi", "gate": "Reproduce steady low/high-pressure larynx cases; compare frequency, mean/peak flow, open/skewness quotients, mucosal wave and intraglottal fields; report discrepancies"},
+    {"id": "bark", "gate": "Add independently documented canine airway and transient respiratory/articulatory controls; evaluate held-out natural barks"},
+    {"id": "realtime", "gate": "Derive and validate a reduced model against offline dynamics, profile stability/latency, then expose live mesh/flow in the lab"}
+  ],
+  "acceptance": "A screenshot, tuned bark, or imported material constants alone is not continuum reproduction. No compute job or paid resource was launched for this specification."
+}

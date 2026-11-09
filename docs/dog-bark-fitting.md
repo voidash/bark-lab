@@ -68,6 +68,68 @@ resonances without changing source settings. Existing causality, fault, stable-e
 allocation and block-independence checks remain in place. Original human/animal fixtures
 are not deliberately changed.
 
+## Timing-only trial, 2026-11-09
+
+```sh
+cargo run --release -p chimera --example fit_dog_bark -- --pulse ../research/dog-rework/candidate.json ../research/dog-pulse
+cargo run --release -p chimera --example fit_dog_bark -- --score ../research/dog-pulse/candidate.json
+```
+
+The previous candidate starts late and has excessive duration: 10 ms RMS bins above
+10% peak occupy 40–270 ms, versus 10–160 ms for the reference. One ablation keeps
+every tissue/tract setting and the peak-pressure parameter fixed, searches only
+onset/attack/decay plus an optional respiratory-drive cutoff, and preserves the
+previous features, loss and weights. `--render` remains reference-free. Older
+15-control files retain the exact 360 ms cutoff and bit-identical output.
+
+573 evaluations, no mechanical failures: envelope RMS .2191 → .1641, spectral RMS
+8.1390 → 7.6865 dB, periodicity RMS .1157 → .1003, combined objective 86.8264 →
+73.1717. Strong-energy extent becomes 10–200 ms. However, the peak moves from 70 ms
+to 30 ms against a 60 ms target; attack reaches the 4 ms lower bound. This is an
+acoustic tradeoff, not a validated better bark. Keeping the retuned timing while
+restoring cutoff to 360 ms yields envelope RMS .1647, so most envelope gain is due
+to onset/attack retiming rather than the added cutoff. The user rejected the voice
+as blown-air/windpipe timbre, without convincing bark or howl. The trial is rejected
+at listening despite improved calibration metrics. No preset is promoted.
+
+The local listening review at http://127.0.0.1:58071/dog-pulse/ includes separate
+reference/physical clips, timing plots and the matched-control cutoff ablation.
+All clips are peak-normalized, not perceptually loudness-matched. The benchmark
+and candidate configuration remain outside Git with explicit provenance.
+
+The [continuum reproduction specification](dog-continuum.json) separately records
+published canine inputs, unresolved data and proposed implementation gates. The
+current four-mass source is not a reproduction of that continuum study; neither
+fitting an isolated bark nor importing elastic moduli establishes one.
+
+## Source isolation after listening rejection
+
+```sh
+cargo run --release -p chimera --example audit_dog_source -- ../research/dog-pulse/source-audit
+```
+
+The audit crosses fold vibration enabled/frozen with turbulence enabled/disabled,
+using the exact default live Bark/Howl plans. The frozen diagnostic bypasses tissue
+stepping and sets the glottal port to its configured rest area; it retains breath,
+airway articulation and flow. It is not an alternative animal source. Within each
+call, every WAV uses one common gain, so a near-silent case is not amplified into
+a plausible tone. Audio-rate runs also expose actual aperture/flow traces sampled
+at 12 kHz for two 40 ms windows. Reading source state leaves the output unchanged.
+
+Howl RMS is .031852 with turbulence and .031856 without; estimated fundamental
+328.660/328.661 Hz. Freezing the tissue reduces sustained RMS to 7.66e-7. Bark RMS
+is .060275/.060387 with/without turbulence, versus .002557 with frozen rest aperture.
+Thus the sustained tone depends on tissue motion, not mainly the additive noise
+source. These nonlinear interventions are not an additive energy decomposition,
+and pitch estimates on the near-silent cases are meaningless. The exact evidence
+rules out a simple hiss-level explanation; it does not prove a specific corrective
+mechanism or that a particular higher-fidelity model will sound canine.
+
+Further envelope optimization is stopped. The next research gate is canine source
+validation: body/cover geometry, constitutive properties, glottal flow and mucosal
+motion before natural-bark fitting. The published continuum benchmark and any
+reduced model derived from it remain separate from the rejected current source.
+
 Source documentation created by Codex GPT-6, session /root, 2026-11-09 local date,
 2026-11-09 UTC; owner cdjk. Status active for physical bark rework; retain while the
 experiment is used. Review after listening feedback, next review 2026-11-10. Project
