@@ -320,10 +320,62 @@ async function run(viewport: { width: number; height: number }, tag: string) {
   await page.close();
 }
 
+// The candidate URL must select the new mechanics in the production Wasm, and
+// the inspector must report moving body masses rather than a decorative source.
+{
+  const page = await browser.newPage({ viewport: { width: 1440, height: 980 } });
+  page.on("pageerror", e => errors.push(`[body-cover] ${e.message}`));
+  const candidate = new URL(url);
+  candidate.searchParams.set("tissue", "canine");
+  await page.goto(candidate.href, { waitUntil: "networkidle" });
+  const cover = page.getByRole("button", { name: "Canine body–cover", exact: true });
+  if (await cover.getAttribute("aria-pressed") !== "true") errors.push("[body-cover] candidate URL did not select tissue model");
+  await page.getByRole("button", { name: "Start physical dog", exact: true }).click();
+  await page.waitForFunction(() => {
+    // @ts-expect-error debug handle
+    return window.__chimeraEngine?.latestCreature?.t?.source.sourceModel === 1;
+  });
+  await page.getByRole("button", { name: "Rough bark test", exact: true }).click();
+  let bodyMotion = 0, peak = 0;
+  for (let i = 0; i < 18; i++) {
+    await page.waitForTimeout(40);
+    const t = await page.evaluate(() => {
+      // @ts-expect-error debug handle
+      return window.__chimeraEngine.latestCreature.t;
+    });
+    if (t.source.fault !== 0) errors.push("[body-cover] mechanical fault");
+    bodyMotion = Math.max(bodyMotion, Math.abs(t.source.leftBody), Math.abs(t.source.rightBody));
+    peak = Math.max(peak, t.outRms);
+  }
+  if (!(bodyMotion > 1e-4 && peak > 0.005)) errors.push(`[body-cover] no solved body motion/audio (${bodyMotion}, ${peak})`);
+  await page.waitForTimeout(600);
+  const tail = await page.evaluate(() => {
+    // @ts-expect-error debug handle
+    return window.__chimeraEngine.latestCreature.t.outRms;
+  });
+  if (!(tail < 1e-3)) errors.push(`[body-cover] bark did not release (${tail})`);
+  await page.getByRole("button", { name: "Legacy four-mass", exact: true }).click();
+  await page.waitForFunction(() => {
+    // @ts-expect-error debug handle
+    return window.__chimeraEngine?.latestCreature?.t?.source.sourceModel === 0;
+  });
+  await cover.click();
+  await page.getByRole("button", { name: "Sustain", exact: true }).first().click();
+  await page.waitForTimeout(1200);
+  const load = await page.evaluate(() => {
+    // @ts-expect-error debug handle
+    return window.__chimeraEngine.load;
+  });
+  await page.screenshot({ path: `${outDir}/body-cover.png`, fullPage: true });
+  await page.getByRole("button", { name: "Release breath", exact: true }).click();
+  logs.push(`[body-cover] moving body ${bodyMotion.toFixed(5)} cm, peak RMS ${peak.toFixed(4)}, released ${tail.toExponential(2)}, load ${load}`);
+  await page.close();
+}
+
 await run({ width: 1440, height: 980 }, "desktop");
 await run({ width: 390, height: 844 }, "mobile");
 await browser.close();
 console.log("console errors:", errors.length ? "\n" + errors.join("\n") : "none");
-console.log(logs.filter((l) => /anatomy|load|warn|transcription|creature|held|back to|beatbox|silence|sing/i.test(l)).slice(0, 40).join("\n"));
+console.log(logs.filter((l) => /body-cover|anatomy|load|warn|transcription|creature|held|back to|beatbox|silence|sing/i.test(l)).slice(0, 40).join("\n"));
 // a run that collected errors fails, so CI and agents can't read it as a pass
 if (errors.length) process.exit(1);

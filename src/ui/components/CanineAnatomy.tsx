@@ -26,6 +26,7 @@ export function CanineAnatomy() {
   const tele = live ?? previewTelemetry(def, params);
   if (!["mouth", "tongueHeight", "tonguePosition", "tongueRoot", "nasal", "larynxDrop"].every(k => Number.isFinite(tele.params[k])) || !tele.tubes.oral?.areas?.length) return <p role="alert">Canine anatomy metadata is out of date. Reload the lab.</p>;
   const values = Object.fromEntries(def.params.map(p => [p.key, params?.[p.key] ?? p.default]));
+  const sourceModel = live?.call ? live.source.sourceModel : values.sourceModel;
   const pose = live?.call ? live.params : { ...tele.params, ...values };
   // While running, the lumen follows solved geometry rather than guessing from a
   // control value. Before audio starts, previewTelemetry runs the same model.
@@ -92,11 +93,19 @@ export function CanineAnatomy() {
     <div className="canine-anatomy-toolbar">
       <span>Sagittal anatomy study</span>
       <div>
-        <button className="chip" onClick={() => useStore.getState().playCall("bark")} disabled={starting}>{started ? "Bark now" : starting ? "Starting…" : "Start physical dog"}</button>
+        <button className="chip" onClick={() => useStore.getState().playCall(sourceModel >= 0.5 ? "roughBark" : "bark")} disabled={starting}>{started ? sourceModel >= 0.5 ? "Rough bark now" : "Bark now" : starting ? "Starting…" : "Start physical dog"}</button>
         <button className={`chip${hold ? " on" : ""}`} aria-pressed={hold} onClick={() => void sustain()} disabled={starting}>{hold ? "Release breath" : "Sustain"}</button>
         <button className="chip" onClick={reset}>Reset anatomy</button>
       </div>
     </div>
+    <div className="canine-anatomy-toolbar" role="group" aria-label="Tissue source model">
+      <span>Tissue source</span>
+      <div>
+        <button className={`chip${sourceModel < 0.5 ? " on" : ""}`} aria-pressed={sourceModel < 0.5} onClick={() => { useStore.getState().setHold(false); setValues({sourceModel: 0}); }}>Legacy four-mass</button>
+        <button className={`chip${sourceModel >= 0.5 ? " on" : ""}`} aria-pressed={sourceModel >= 0.5} onClick={() => { useStore.getState().setHold(false); setValues({sourceModel: 1}); }}>Canine body–cover</button>
+      </div>
+    </div>
+    <p className="canine-anatomy-note">{sourceModel >= 0.5 ? "Body–cover candidate: six tissue masses; canine length, height and material moduli. Try Rough bark test. Lateral depth and damping are assumptions. Not a continuum/MRI reconstruction." : "Rejected legacy timbre: four generic tissue masses. Select Canine body–cover to compare the new physical source."}</p>
     {startError && <p className="error" role="alert">Audio could not start: {startError}</p>}
     <svg ref={svg} className="canine-anatomy-plate" viewBox="0 0 900 660" role="group" aria-label="Dog vocal tract: controllable sagittal cutaway with tongue, jaw, palate, epiglottis and larynx" onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
       <desc>Reference-informed anatomy illustration. Colored handles adjust the reduced acoustic model. Use arrow keys on a focused handle or use the sliders below.</desc>

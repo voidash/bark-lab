@@ -164,7 +164,7 @@ export const useStore = create<State>((set, get) => ({
     updateGate(get());
   },
   creature: "dog-physics",
-  cparams: {},
+  cparams: typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tissue") === "canine" ? { "dog-physics": { sourceModel: 1 } } : {} as Record<string, Record<string, number>>,
   keyCall: null,
   setKeyCall: (id) => {
     set({ keyCall: id, heldNotes: [] });

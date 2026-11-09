@@ -5,7 +5,7 @@ import { liveTelemetry, previewTelemetry } from "../creatureLive.ts";
 import { V } from "../colors.ts";
 import { beam, dot, label, seg } from "../render/vector.ts";
 
-/** Four actual mechanical degrees of freedom. No invented phase or slowed cycle. */
+/** Actual cover edges and, for v2, body masses. No invented phase or slowed cycle. */
 export function CanineSource() {
   const ref = usePhosphor(({ ctx, w, h }) => {
     const state = useStore.getState();
@@ -13,7 +13,8 @@ export function CanineSource() {
     if (!def || def.id !== "dog-physics") return;
     const live = liveTelemetry(def.id);
     const source = (live ?? previewTelemetry(def, state.cparams[def.id])).source;
-    if (!["restArea", "foldLength", "leftUpper", "leftLower", "rightUpper", "rightLower", "lungPressure", "subPressure", "supraPressure", "glottalArea", "glottalFlow"].every(k => Number.isFinite(source[k]))) {
+    const bodyCover = source.sourceModel >= 0.5;
+    if (!["restArea", "foldLength", "leftUpper", "leftLower", "rightUpper", "rightLower", "lungPressure", "subPressure", "supraPressure", "glottalArea", "glottalFlow", ...(bodyCover ? ["leftBody", "rightBody"] : [])].every(k => Number.isFinite(source[k]))) {
       label(ctx, "MECHANICAL TELEMETRY MISSING: RELOAD THE LAB", 12, 28, { size: 9, color: V.amber });
       return;
     }
@@ -23,8 +24,9 @@ export function CanineSource() {
     const upper = 52, lower = h - 47;
     const half = source.restArea / (2 * source.foldLength);
     const outer = Math.min(66, diagramW * 0.32);
-    const excursion = Math.max(...[source.leftUpper, source.leftLower, source.rightUpper, source.rightLower].map(x => Math.abs(half + x)), 1e-5);
-    const scale = Math.min(900, diagramW * 4, outer * 0.7 / excursion);
+    const excursion = Math.max(...[source.leftUpper, source.leftLower, source.rightUpper, source.rightLower].map(x => Math.abs(half + x)), ...(bodyCover ? [Math.abs(source.leftBody), Math.abs(source.rightBody)] : []), 1e-5);
+    const scale = Math.min(900, diagramW * 4, outer * (bodyCover ? 0.4 : 0.7) / excursion);
+    const bodies = [cx - outer * 0.7 - (source.leftBody ?? 0) * scale, cx + outer * 0.7 + (source.rightBody ?? 0) * scale];
     const left = [cx - (half + source.leftUpper) * scale, cx - (half + source.leftLower) * scale];
     const right = [cx + (half + source.rightUpper) * scale, cx + (half + source.rightLower) * scale];
     label(ctx, "LEFT", cx - outer * 0.7, 18, { size: 9, color: V.blueMid, align: "center" });
@@ -35,7 +37,7 @@ export function CanineSource() {
       const color = row === 0 ? V.white : V.amber;
       const depth = row === 0 ? 16 : 25;
       for (const [edge, side] of [[left[row], -1], [right[row], 1]]) {
-        const outside = cx + side * outer;
+        const outside = bodyCover ? bodies[side < 0 ? 0 : 1] : cx + side * outer;
         const shape = new Path2D();
         shape.rect(Math.min(outside, edge), y - depth / 2, Math.abs(edge - outside), depth);
         beam(ctx, shape, V.blueMid, 1.1);
@@ -46,7 +48,11 @@ export function CanineSource() {
     }
     seg(ctx, left[0], upper, left[1], lower, V.white, 1);
     seg(ctx, right[0], upper, right[1], lower, V.white, 1);
-    label(ctx, "POSITION EXAGGERATED", cx, h - 9, { size: 8, color: V.blueDim, align: "center" });
+    if (bodyCover) {
+      for (const x of bodies) { seg(ctx, x, upper - 12, x, lower + 12, V.pink, 5); dot(ctx, x, (upper + lower) / 2, 4, V.pink); }
+      label(ctx, "BODY + COVER", cx, 22, { size: 8, color: V.pink, align: "center" });
+    }
+    label(ctx, bodyCover ? "6 MASSES / MAGNIFIED" : "4 MASSES / MAGNIFIED", cx, h - 9, { size: 8, color: V.blueDim, align: "center" });
 
     const x = diagramW + 8, rightX = w - 12;
     const rows = [
@@ -63,13 +69,13 @@ export function CanineSource() {
     });
     label(ctx, live ? "LIVE SNAPSHOT" : "START AUDIO TO INSPECT", rightX, h - 9, { size: 8, color: V.blueDim, align: "right" });
   });
-  return <canvas ref={ref} className="instrument-canvas" role="img" aria-label="Canine larynx: four simulated tissue masses, opening, airflow and boundary pressures" />;
+  return <canvas ref={ref} className="instrument-canvas" role="img" aria-label="Canine larynx: simulated cover and body motion, opening, airflow and boundary pressures" />;
 }
 
 export function CanineResearch() {
   return <details className="canine-research">
     <summary>Research and model assumptions</summary>
-    <p>Breath drives left/right vocal folds; their opening changes airflow into the throat, mouth and nose. The airway pressure feeds back on the tissue.</p>
+    <p>Breath drives left/right vocal folds; their opening changes airflow into the throat, mouth and nose. The airway pressure feeds back on the tissue. The body–cover candidate adds two independently moving body masses beneath four cover-edge masses; pink bars show their actual solved motion.</p>
     <ul>
       <li><a href="https://pubmed.ncbi.nlm.nih.gov/10504322/" target="_blank" rel="noreferrer">Riede &amp; Fitch, 1999</a>: canine tract length and non-uniform resonances. Our airway shape is a tunable approximation, not a scan.</li>
       <li><a href="https://pubmed.ncbi.nlm.nih.gov/11681395/" target="_blank" rel="noreferrer">Riede et al., 2001</a>: barks combine periodic vibration and irregular/noisy energy. Adding noise alone is not canine validation.</li>
@@ -77,7 +83,7 @@ export function CanineResearch() {
       <li><a href="https://www.isca-archive.org/interspeech_2016/moore16_interspeech.pdf" target="_blank" rel="noreferrer">Moore, 2016</a>: real-time mammalian source/filter architecture, including a dog preset; it had no formal perceptual evaluation.</li>
     </ul>
     <p><a href="https://vanat.ahc.umn.edu/carnLabs/Lab23/Img23-11.html" target="_blank" rel="noreferrer">University of Minnesota canine anatomy</a> informs the original cutaway's tissue relationships. No scan was segmented; tongue and larynx controls use bounded acoustic approximations.</p>
-    <p>Current limits: generic mammalian tissue constants with an effective 14 mm fold length, an illustrative cutaway with effective one-dimensional articulators, and hand-designed call gestures. The four-mass source is physical; convincing dog identity is still unvalidated. The snapshots above come from the solver and are not a slow-motion phonation cycle. Tissue displacement is magnified to remain visible.</p>
+    <p>Legacy uses generic mammalian tissue constants and an effective 14 mm fold length. The body–cover candidate uses 12.5 mm length, 3.5 mm height, density and body/cover elastic moduli from the canine study. Lateral depths (0.5/2.5 mm), damping, the lumped reduction and call gestures are assumptions. Neither is a continuum/MRI reconstruction or a validated dog voice. Snapshots come from the solver; displacement is magnified.</p>
     <p>Based on <a href="https://github.com/jamesondh/chimera-vocal-synth" target="_blank" rel="noreferrer">CHIMERA</a>. Its human stroboscope and 3D anatomy cannot stand in for a measured canine model.</p>
   </details>;
 }

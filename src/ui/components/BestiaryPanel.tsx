@@ -90,11 +90,12 @@ function Params({ def }: { def: CreatureDef }) {
   const live = useLiveCreature(def.id);
   // while a call plays, the encoders follow its automation; afterwards they return to yours
   const calling = !!live?.call;
+  const visibleParams = def.params.filter(p => p.key !== "sourceModel");
   const pages: EncoderPage[] = [];
-  for (let i = 0; i < def.params.length; i += 4) {
+  for (let i = 0; i < visibleParams.length; i += 4) {
     pages.push({
       name: String(pages.length + 1),
-      encoders: def.params.slice(i, i + 4).map((p) => {
+      encoders: visibleParams.slice(i, i + 4).map((p) => {
         const mine = cparams?.[p.key] ?? p.default;
         return { label: p.label, value: calling ? (live!.params[p.key] ?? mine) : mine, min: p.min, max: p.max, log: p.log, onChange: (v: number) => setCParam(p.key, v), format: (v: number) => fmt(v, p) };
       }),
@@ -121,7 +122,7 @@ export function BestiaryRight() {
       <Screen className="s-wf" title="Spectrogram" sub="Waterfall of the call">
         <Spectrogram />
       </Screen>
-      {creature === "dog-physics" && <Screen id="canine-source" className="s-canine-source" title="Vocal folds" sub="Four masses / live snapshots">
+      {creature === "dog-physics" && <Screen id="canine-source" className="s-canine-source" title="Vocal folds" sub="Body / cover / live snapshots">
         <div className="canine-source-diagram"><CanineSource /></div>
         <CanineResearch />
       </Screen>}
