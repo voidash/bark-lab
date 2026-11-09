@@ -17,6 +17,11 @@ pub const BARK_SETTINGS: [(&str, f64); 5] = [
     ("throat", 0.4),
 ];
 
+const TRACT_LENGTH: usize = 8;
+const CAVITY: usize = 9;
+const ASPIRATION: usize = 10;
+const GAP: usize = 11;
+
 struct PhysicalDog {
     a: MammalAirway,
     folds: TwoMassFolds,
@@ -62,7 +67,7 @@ impl CreatureSim for PhysicalDog {
         if let Err(error) = self.folds.configure(
             p[0] / 170.0,
             1.0 - 0.55 * p[2],
-            0.045 - 0.03 * p[3] - 0.01 * p[2].abs(),
+            (0.045 - 0.03 * p[3] - 0.01 * p[2].abs()) * p[GAP],
             (0.9 - 0.2 * p[3] - 0.25 * p[2].abs()) * p[5],
         ) {
             self.fault = Some(error);
@@ -85,21 +90,23 @@ impl CreatureSim for PhysicalDog {
             },
             &mut a.phar_area,
         );
-        a.net.set_tube_targets(a.pharynx, ph, None, None);
+        a.net
+            .set_tube_targets(a.pharynx, ph, Some(6.0 * p[TRACT_LENGTH] / 17.0), None);
         let mouth = 0.12 + 3.5 * p[1];
         let oral = fill_areas(
             a.oral,
             |u| {
                 if u < 0.65 {
-                    2.6 + 0.6 * sin(PI * u / 0.65)
+                    p[CAVITY] * (2.6 + 0.6 * sin(PI * u / 0.65))
                 } else {
-                    2.6 + (mouth - 2.6) * (u - 0.65) / 0.35
+                    2.6 * p[CAVITY] + (mouth - 2.6 * p[CAVITY]) * (u - 0.65) / 0.35
                 }
             },
             &mut a.oral_area,
         );
-        a.net.set_tube_targets(a.oral, oral, None, None);
-        mammal_noise(a, 1.0e-6 + 5.0e-6 * (1.0 - p[3]), None);
+        a.net
+            .set_tube_targets(a.oral, oral, Some(11.0 * p[TRACT_LENGTH] / 17.0), None);
+        mammal_noise(a, p[ASPIRATION] * (1.0e-6 + 5.0e-6 * (1.0 - p[3])), None);
     }
 
     fn sample(&mut self) -> f64 {
@@ -149,6 +156,21 @@ pub fn def() -> CreatureDef {
             .unit("cm²")
             .smooth(0.02),
     );
+    // Inverse fitting needs independent source and filter controls. The original
+    // model hid these at one arbitrary setting, so roughness alone could not fit
+    // a bark's resonances, spectral tilt, or glottal closure. Length is restricted
+    // to an adult-dog subset of Riede & Fitch (1999)'s 6.9–22.4 cm measurements.
+    // Never shorten this existing grid below 17 cm: that would violate its CFL
+    // design. These area/gap bounds are engineering search bounds, not measured
+    // anatomy. A fitted acoustic match is not a unique anatomical reconstruction.
+    def.params.extend([
+        ParamDef::new("tractLength", "Tract", 17.0, 22.4, 17.0)
+            .unit("cm")
+            .smooth(0.03),
+        ParamDef::new("cavity", "Cavity", 0.4, 2.0, 1.0).smooth(0.02),
+        ParamDef::new("aspiration", "Noise", 0.05, 2.0, 1.0).smooth(0.01),
+        ParamDef::new("gap", "Gap", 0.4, 1.6, 1.0).smooth(0.008),
+    ]);
     for call in &mut def.calls {
         if call.id == "bark" || call.id == "barkTune" {
             for key in &mut call.keys {

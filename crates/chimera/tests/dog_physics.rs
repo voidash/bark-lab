@@ -1,10 +1,70 @@
 //! Mechanical causality and runtime checks. None of these is a dog-likeness judge.
+use chimera::airway::frequency::{find_peaks, linspace, transfer_function};
 use chimera::analysis::pitch::{YinOpts, yin_pitch};
 use chimera::creatures::{CreatureVoice, creature_by_id};
 use chimera::sources::two_mass::{FoldError, TwoMassFolds};
 
 fn rms(x: &[f32]) -> f64 {
     (x.iter().map(|&x| f64::from(x).powi(2)).sum::<f64>() / x.len() as f64).sqrt()
+}
+
+#[test]
+fn length_control_changes_airway_resonances_without_changing_the_source_preset() {
+    let def = creature_by_id("dog-physics").unwrap();
+    let frequencies = linspace(100.0, 5000.0, 981);
+    let mut peaks = Vec::new();
+    for length in [17.0, 22.4] {
+        let mut voice = CreatureVoice::new(
+            def,
+            48000.0,
+            &[
+                (def.param_index("tractLength").unwrap(), length),
+                (def.param_index("mouth").unwrap(), 0.65),
+                (def.param_index("nasal").unwrap(), 0.0),
+            ],
+        );
+        // Settle geometry without phonation; test the actual linearized acoustic
+        // network rather than a pitch/formant estimator applied to its source.
+        voice.render(&mut vec![0.0; 9600]);
+        let net = voice.sim.net().unwrap();
+        assert!(net.check_cfl() <= 1.0);
+        let pharynx = voice
+            .sim
+            .tubes()
+            .iter()
+            .find(|(name, _)| *name == "pharynx")
+            .unwrap()
+            .1;
+        let elements = net.linear_elements();
+        let cut: Vec<_> = (0..elements.n_branches)
+            .filter(|&b| {
+                elements.b[b] == pharynx.first_node() || elements.a[b] == pharynx.first_node()
+            })
+            .filter(|&b| {
+                elements.a[b] != pharynx.first_node() + 1
+                    && elements.b[b] != pharynx.first_node() + 1
+            })
+            .collect();
+        let transfer = transfer_function(&elements, pharynx.first_node(), &frequencies, &cut);
+        let resonances = find_peaks(&frequencies, &transfer.mag, 100.0);
+        assert!(
+            resonances.len() >= 3,
+            "missing physical airway resonances: {resonances:?}"
+        );
+        peaks.push(
+            resonances
+                .iter()
+                .take(3)
+                .map(|p| p.freq)
+                .collect::<Vec<_>>(),
+        );
+    }
+    for i in 0..3 {
+        assert!(
+            peaks[1][i] < peaks[0][i] * 0.9,
+            "lengthening should lower resonances, not transpose the source: {peaks:?}"
+        );
+    }
 }
 
 #[test]
