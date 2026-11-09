@@ -182,17 +182,29 @@ async function run(viewport: { width: number; height: number }, tag: string) {
 
 // A fresh visit must show the dog and start the dog engine, without a manual mode switch.
 {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 980 } });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 980 }, hasTouch: true });
   page.on("pageerror", (e) => errors.push(`[dog-start] pageerror: ${e.message}`));
   await page.goto(url, { waitUntil: "networkidle" });
   if ((await page.getByRole("radio", { name: "Bestiary", exact: true }).getAttribute("aria-checked")) !== "true") errors.push("[dog-start] Bestiary is not selected on a fresh visit");
   if ((await page.locator(".specimen.on .specimen-name").textContent())?.trim() !== "Dog physics") errors.push("[dog-start] physical Dog is not selected on a fresh visit");
   if ((await page.locator(".left .screen-title").textContent()) !== "Dog vocal tract") errors.push("[dog-start] the left screen does not identify the dog vocal tract");
-  if ((await page.getByRole("img", { name: /^Dog vocal tract:/ }).count()) !== 1) errors.push("[dog-start] no accessible dog vocal tract drawing");
+  if ((await page.getByRole("group", { name: /^Dog vocal tract:/ }).count()) !== 1) errors.push("[dog-start] no accessible interactive dog vocal tract drawing");
   if ((await page.getByRole("img", { name: /^Canine larynx:/ }).count()) !== 1) errors.push("[dog-start] no physical canine source inspector");
   if ((await page.getByText("Research and model assumptions", { exact: true }).count()) !== 1) errors.push("[dog-start] canine research evidence is missing");
   if (await page.locator(".body-control").count()) errors.push("[dog-start] human body controls are visible on the dog view");
   if ((await page.getByRole("checkbox", { name: "Sound pressure", exact: true }).count()) !== 1) errors.push("[dog-start] physical voice lacks a pressure toggle");
+  // Anatomy is editable before permission to start audio, using normal keyboard controls.
+  await page.getByRole("slider", { name: "Tongue elevation", exact: true }).focus();
+  await page.keyboard.press("End");
+  if (Number(await page.getByRole("slider", { name: "Tongue elevation", exact: true }).inputValue()) !== 1) errors.push("[anatomy] pre-audio editing failed");
+  await page.getByRole("button", { name: "Reset anatomy", exact: true }).click();
+  const touchSlider = page.getByRole("slider", { name: "Tongue elevation", exact: true });
+  await touchSlider.scrollIntoViewIfNeeded();
+  const touchBox = await touchSlider.boundingBox();
+  if (!touchBox) throw new Error("Canine touch slider is missing");
+  await page.touchscreen.tap(touchBox.x + touchBox.width * 0.8, touchBox.y + touchBox.height / 2);
+  if (Number(await touchSlider.inputValue()) < 0.6) errors.push("[anatomy] touch slider did not change the articulator");
+  await page.getByRole("button", { name: "Reset anatomy", exact: true }).click();
   await page.screenshot({ path: `${outDir}/dog-start.png` });
   await page.getByRole("button", { name: "Start physical dog", exact: true }).click();
   await page.waitForFunction(() => {
@@ -207,6 +219,54 @@ async function run(viewport: { width: number; height: number }, tag: string) {
   if (!["trachea", "pharynx", "oral", "nasal"].every((name) => dog.tubes.includes(name))) errors.push(`[dog-start] missing canine airway branches: ${JSON.stringify(dog)}`);
   if (!["leftLower", "leftUpper", "rightLower", "rightUpper", "glottalArea", "glottalFlow", "subPressure", "supraPressure", "lungPressure", "tracheaLength", "pharynxLength", "oralLength", "nasalLength"].every(k => Number.isFinite(dog.source[k]))) errors.push("[dog-start] mechanical inspector has missing/non-finite engine state");
   logs.push(`[dog-start] creature ${JSON.stringify(dog)}`);
+  await page.getByRole("slider", { name: "Tongue elevation", exact: true }).focus();
+  await page.keyboard.press("End");
+  await page.waitForFunction(() => {
+    // @ts-expect-error debug handle
+    const t = window.__chimeraEngine?.latestCreature?.t;
+    return t?.params.tongueHeight > 0.99 && !t.call;
+  });
+  const raisedArea = await page.evaluate(() => {
+    // @ts-expect-error debug handle
+    const a = window.__chimeraEngine.latestCreature.t.tubes.oral.areas;
+    return a[Math.floor(a.length / 2)];
+  });
+  // Pointer coordinates are transformed by the actual SVG screen matrix.
+  const handle = page.locator('[data-handle="larynx"] .handle-ring');
+  await handle.scrollIntoViewIfNeeded();
+  const ring = await handle.boundingBox();
+  const plate = await page.locator(".canine-anatomy-plate").boundingBox();
+  if (!ring || !plate) throw new Error("Canine drawing is missing its larynx handle");
+  const sx = ring.x + ring.width / 2, sy = ring.y + ring.height / 2;
+  await page.mouse.move(sx, sy);
+  await page.mouse.down();
+  await page.mouse.move(sx, sy + 70 * plate.width / 900, { steps: 10 });
+  await page.mouse.up();
+  if (!(await page.locator('[data-handle="larynx"]').evaluate(el => el === document.activeElement))) errors.push("[anatomy] pointer-selected handle did not retain keyboard focus");
+  await page.waitForFunction(() => {
+    // @ts-expect-error debug handle
+    const t = window.__chimeraEngine?.latestCreature?.t;
+    return t?.params.larynxDrop > 1.9 && t.source.pharynxLength > 7.9;
+  });
+  await page.locator('[data-handle="root"]').focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.waitForFunction(() => {
+    // @ts-expect-error debug handle
+    return window.__chimeraEngine?.latestCreature?.t?.params.tongueRoot > 0.07;
+  });
+  await page.getByRole("button", { name: "Reset anatomy", exact: true }).click();
+  await page.waitForFunction(() => {
+    // @ts-expect-error debug handle
+    const p = window.__chimeraEngine?.latestCreature?.t?.params;
+    return p && p.tongueHeight < 0.001 && p.larynxDrop < 0.001 && p.tongueRoot < 0.001;
+  });
+  const restingArea = await page.evaluate(() => {
+    // @ts-expect-error debug handle
+    const a = window.__chimeraEngine.latestCreature.t.tubes.oral.areas;
+    return a[Math.floor(a.length / 2)];
+  });
+  if (!(raisedArea < restingArea * 0.4)) errors.push(`[anatomy] tongue control did not constrict solved lumen: ${raisedArea}, ${restingArea}`);
+  logs.push(`[anatomy] slider constriction ${raisedArea}/${restingArea}; pointer larynx +2 cm, keyboard root and reset reached solver`);
   for (const id of ["dog-physics", "dog"]) {
     const physical = id === "dog-physics";
     if (!physical) {
@@ -264,6 +324,6 @@ await run({ width: 1440, height: 980 }, "desktop");
 await run({ width: 390, height: 844 }, "mobile");
 await browser.close();
 console.log("console errors:", errors.length ? "\n" + errors.join("\n") : "none");
-console.log(logs.filter((l) => /load|warn|transcription|creature|held|back to|beatbox|silence|sing/i.test(l)).slice(0, 40).join("\n"));
+console.log(logs.filter((l) => /anatomy|load|warn|transcription|creature|held|back to|beatbox|silence|sing/i.test(l)).slice(0, 40).join("\n"));
 // a run that collected errors fails, so CI and agents can't read it as a pass
 if (errors.length) process.exit(1);

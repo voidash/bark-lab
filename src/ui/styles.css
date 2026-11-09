@@ -2601,6 +2601,27 @@ input[type="range"]::-moz-range-thumb {
 .canine-research li + li { margin-top: 7px; }
 .canine-research a { color: var(--amber); text-underline-offset: 3px; }
 
+.canine-anatomy { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; font-family: "Archivo", system-ui, sans-serif; }
+.canine-anatomy-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px 0; font-size: 12px; color: var(--white); }
+.canine-anatomy-toolbar > div { display: flex; gap: 6px; flex-wrap: wrap; }
+.canine-anatomy-plate { display: block; width: 100%; height: auto; aspect-ratio: 900 / 660; min-height: 260px; touch-action: pan-y; background: #080d11; }
+.canine-anatomy-labels { font: 13px "Archivo", sans-serif; fill: #e4e8e7; }
+.canine-anatomy-labels path { stroke: #8e9b9f; stroke-width: 1; fill: none; }
+.canine-plate-note { font: 10px "Archivo", sans-serif; fill: #abb9be; }
+.canine-anatomy-handles [role="button"] { cursor: grab; touch-action: none; outline: none; }
+.canine-anatomy-handles [role="button"]:active { cursor: grabbing; }
+.canine-anatomy-handles .handle-hit { fill: transparent; pointer-events: all; }
+.canine-anatomy-handles .handle-ring { fill: #080d11; fill-opacity: .8; stroke: currentColor; stroke-width: 2; }
+.canine-anatomy-handles [role="button"]:focus-visible .handle-ring { stroke: #fff; stroke-width: 4; }
+.canine-handle-help, .canine-anatomy-note { margin: 8px 14px; font-size: 12px; line-height: 1.5; color: var(--white); }
+.canine-anatomy-note { font-size: 11px; color: #aebec6; }
+.canine-anatomy-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; padding: 6px 14px; }
+.canine-anatomy-controls label { min-width: 0; color: var(--white); font-size: 12px; }
+.canine-anatomy-controls label > span { display: flex; gap: 8px; justify-content: space-between; }
+.canine-anatomy-controls output { color: var(--amber); font-variant-numeric: tabular-nums; }
+.canine-anatomy-controls input { display: block; width: 100%; margin: 8px 0 0; accent-color: var(--blue); }
+@media (max-width: 430px) { .canine-anatomy-controls { grid-template-columns: 1fr; gap: 12px; } .canine-anatomy-plate { min-height: 250px; } }
+
 /* the gallery is drawings that scale with the screen, laid over its body like a canvas */
 .s-gallery .specimens {
   position: absolute;

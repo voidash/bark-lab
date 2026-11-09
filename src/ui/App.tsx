@@ -13,6 +13,7 @@ import { Screen } from "./components/Screen.tsx";
 import { SpeakRight, speechInfo, speechSlots, speechWords } from "./components/SpeakPanel.tsx";
 import { BestiaryRight } from "./components/BestiaryPanel.tsx";
 import { CreatureView } from "./components/CreatureView.tsx";
+import { CanineAnatomy } from "./components/CanineAnatomy.tsx";
 import { creatureById } from "../wasm/engine.ts";
 import { BeatboxRight, BeatOverlay, beatInfo, beatSlots } from "./components/BeatboxPanel.tsx";
 import { SingRight, singInfo, singWords } from "./components/SingPanel.tsx";
@@ -194,10 +195,10 @@ function LeftScreen() {
       tools={<ViewToggles />}
     >
       <Suspense fallback={null}>
-        {bestiary ? <CreatureView /> : mode === "speak" ? <Face slots={speechSlots} info={speechInfo} overlay={speechWords} /> : mode === "sing" ? <Face info={singInfo} overlay={singWords} /> : mode === "beatbox" ? <Face slots={beatSlots} info={beatInfo} showFormants={false} /> : <Face />}
+        {bestiary ? creature === "dog-physics" ? <CanineAnatomy /> : <CreatureView /> : mode === "speak" ? <Face slots={speechSlots} info={speechInfo} overlay={speechWords} /> : mode === "sing" ? <Face info={singInfo} overlay={singWords} /> : mode === "beatbox" ? <Face slots={beatSlots} info={beatInfo} showFormants={false} /> : <Face />}
       </Suspense>
       {mode === "beatbox" && <BeatOverlay />}
-      <StartPrompt />
+      {!(bestiary && creature === "dog-physics") && <StartPrompt />}
     </Screen>
   );
 }

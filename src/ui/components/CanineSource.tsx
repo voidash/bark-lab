@@ -76,7 +76,8 @@ export function CanineResearch() {
       <li><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8547019/" target="_blank" rel="noreferrer">Jiang et al., 2021/2022</a>: measured canine geometry and tissue properties support a coupled flow–tissue model. We have not reproduced its MRI-based continuum simulation.</li>
       <li><a href="https://www.isca-archive.org/interspeech_2016/moore16_interspeech.pdf" target="_blank" rel="noreferrer">Moore, 2016</a>: real-time mammalian source/filter architecture, including a dog preset; it had no formal perceptual evaluation.</li>
     </ul>
-    <p>Current limits: generic mammalian tissue constants with an effective 14 mm fold length, a schematic head, and hand-designed call gestures. The four-mass source is physical; convincing dog identity is still unvalidated. The snapshots above come from the solver and are not a slow-motion phonation cycle. Tissue displacement is magnified to remain visible.</p>
+    <p><a href="https://vanat.ahc.umn.edu/carnLabs/Lab23/Img23-11.html" target="_blank" rel="noreferrer">University of Minnesota canine anatomy</a> informs the original cutaway's tissue relationships. No scan was segmented; tongue and larynx controls use bounded acoustic approximations.</p>
+    <p>Current limits: generic mammalian tissue constants with an effective 14 mm fold length, an illustrative cutaway with effective one-dimensional articulators, and hand-designed call gestures. The four-mass source is physical; convincing dog identity is still unvalidated. The snapshots above come from the solver and are not a slow-motion phonation cycle. Tissue displacement is magnified to remain visible.</p>
     <p>Based on <a href="https://github.com/jamesondh/chimera-vocal-synth" target="_blank" rel="noreferrer">CHIMERA</a>. Its human stroboscope and 3D anatomy cannot stand in for a measured canine model.</p>
   </details>;
 }

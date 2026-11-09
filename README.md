@@ -17,6 +17,12 @@ retains the rejected prescribed-pulse baseline. The reference's anatomy is illus
 The engine is Rust, compiled to WebAssembly for an AudioWorklet; the same code runs natively
 for tests and the `chimera` CLI.
 
+The dog opens on a controllable sagittal cutaway. Drag the colored jaw, tongue,
+tongue-root, velum and larynx handles, use arrow keys, or use the six labeled sliders.
+Choose **Sustain** to hear geometry changes continuously; **Reset anatomy** restores
+the resting airway. These controls alter the acoustic solver. The tissue drawing
+is reference-informed illustration, not MRI segmentation or measured muscle motion.
+
 ## What it does
 
 - **Play**: drag the tongue, lips and jaw in a live cutaway of the head; vowel pad, encoders,

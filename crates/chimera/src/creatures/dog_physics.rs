@@ -21,6 +21,10 @@ const TRACT_LENGTH: usize = 8;
 const CAVITY: usize = 9;
 const ASPIRATION: usize = 10;
 const GAP: usize = 11;
+const TONGUE_HEIGHT: usize = 12;
+const TONGUE_POSITION: usize = 13;
+const TONGUE_ROOT: usize = 14;
+const LARYNX_DROP: usize = 15;
 
 struct PhysicalDog {
     a: MammalAirway,
@@ -82,25 +86,36 @@ impl CreatureSim for PhysicalDog {
             |u| {
                 // A finite throat entrance changes acoustic impedance and therefore the
                 // pressure fed back to the tissue. No artificial feedback gain is applied.
-                if u < 0.3 {
+                let area = if u < 0.3 {
                     p[7] + (1.2 + sin(PI * 0.3) - p[7]) * (u / 0.3)
                 } else {
                     1.2 + sin(PI * u)
-                }
+                };
+                // Effective tongue-root retraction reduces the oropharyngeal
+                // lumen. The 1-D area mapping is an engineering approximation,
+                // not a segmented midsagittal slice or a muscle simulation.
+                area * (1.0 - 0.55 * p[TONGUE_ROOT] * sin(PI * u).powi(2))
             },
             &mut a.phar_area,
         );
-        a.net
-            .set_tube_targets(a.pharynx, ph, Some(6.0 * p[TRACT_LENGTH] / 17.0), None);
+        a.net.set_tube_targets(
+            a.pharynx,
+            ph,
+            Some(6.0 * p[TRACT_LENGTH] / 17.0 + p[LARYNX_DROP]),
+            None,
+        );
         let mouth = 0.12 + 3.5 * p[1];
         let oral = fill_areas(
             a.oral,
             |u| {
-                if u < 0.65 {
+                let area = if u < 0.65 {
                     p[CAVITY] * (2.6 + 0.6 * sin(PI * u / 0.65))
                 } else {
                     2.6 * p[CAVITY] + (mouth - 2.6 * p[CAVITY]) * (u - 0.65) / 0.35
-                }
+                };
+                let distance = ((u - p[TONGUE_POSITION]) / 0.30).abs().min(1.0);
+                let constriction = 1.0 - distance * distance;
+                area * (1.0 - 0.75 * p[TONGUE_HEIGHT] * constriction * constriction)
             },
             &mut a.oral_area,
         );
@@ -202,6 +217,14 @@ pub fn def() -> CreatureDef {
         ParamDef::new("cavity", "Cavity", 0.4, 2.0, 1.0).smooth(0.02),
         ParamDef::new("aspiration", "Noise", 0.05, 2.0, 1.0).smooth(0.01),
         ParamDef::new("gap", "Gap", 0.4, 1.6, 1.0).smooth(0.008),
+        ParamDef::new("tongueHeight", "Lift", 0.0, 1.0, 0.0).smooth(0.025),
+        ParamDef::new("tonguePosition", "Pos.", 0.25, 0.80, 0.50).smooth(0.025),
+        ParamDef::new("tongueRoot", "Root", 0.0, 1.0, 0.0).smooth(0.025),
+        // Only lengthening is allowed on the fixed grid, preserving its CFL
+        // condition. 0–2 cm is a design bound, not a measured bark trajectory.
+        ParamDef::new("larynxDrop", "Drop", 0.0, 2.0, 0.0)
+            .unit("cm")
+            .smooth(0.03),
     ]);
     for call in &mut def.calls {
         if call.id == "bark" || call.id == "barkTune" {

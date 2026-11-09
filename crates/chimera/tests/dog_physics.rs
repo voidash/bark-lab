@@ -1,11 +1,73 @@
 //! Mechanical causality and runtime checks. None of these is a dog-likeness judge.
 use chimera::airway::frequency::{find_peaks, linspace, transfer_function};
 use chimera::analysis::pitch::{YinOpts, yin_pitch};
-use chimera::creatures::{CreatureVoice, creature_by_id};
+use chimera::creatures::{CreatureTelemetry, CreatureVoice, creature_by_id};
 use chimera::sources::two_mass::{FoldError, TwoMassFolds};
 
 fn rms(x: &[f32]) -> f64 {
     (x.iter().map(|&x| f64::from(x).powi(2)).sum::<f64>() / x.len() as f64).sqrt()
+}
+
+#[test]
+fn articulators_change_the_solved_airway_and_sound() {
+    let def = creature_by_id("dog-physics").unwrap();
+    let solve = |settings: &[(&str, f64)]| {
+        let params: Vec<_> = settings
+            .iter()
+            .map(|(k, v)| (def.param_index(k).unwrap(), *v))
+            .collect();
+        let mut voice = CreatureVoice::new(def, 48000.0, &params);
+        voice.set_gate(1.0);
+        let mut audio = vec![0.0; 24000];
+        voice.render(&mut audio);
+        assert!(voice.sim.net().unwrap().check_cfl() <= 1.0);
+        let mut t = voice.new_telemetry();
+        voice.telemetry(&mut t);
+        assert_eq!(t.source.iter().find(|(k, _)| *k == "fault").unwrap().1, 0.0);
+        (t, audio)
+    };
+    let (rest, sound) = solve(&[]);
+    let (raised, raised_sound) = solve(&[("tongueHeight", 1.0)]);
+    let (forward, _) = solve(&[("tongueHeight", 1.0), ("tonguePosition", 0.8)]);
+    let oral = |t: &CreatureTelemetry| {
+        t.tubes
+            .iter()
+            .find(|t| t.name == "oral")
+            .unwrap()
+            .areas
+            .clone()
+    };
+    let a = oral(&rest);
+    let b = oral(&raised);
+    let c = oral(&forward);
+    let constriction = |areas: &[f32]| {
+        (0..a.len())
+            .min_by(|&i, &j| (areas[i] / a[i]).total_cmp(&(areas[j] / a[j])))
+            .unwrap()
+    };
+    assert!(b[a.len() / 2] < a[a.len() / 2] * 0.4);
+    assert!(constriction(&c) > constriction(&b) + a.len() / 5);
+    assert_ne!(sound, raised_sound, "tongue edits are visual only");
+    let (root, _) = solve(&[("tongueRoot", 1.0)]);
+    let ph = |t: &CreatureTelemetry| {
+        t.tubes
+            .iter()
+            .find(|t| t.name == "pharynx")
+            .unwrap()
+            .areas
+            .clone()
+    };
+    let p = ph(&rest);
+    assert!(ph(&root)[p.len() / 2] < p[p.len() / 2] * 0.5);
+    let (lowered, _) = solve(&[("larynxDrop", 2.0)]);
+    let length = |t: &CreatureTelemetry| {
+        t.source
+            .iter()
+            .find(|(k, _)| *k == "pharynxLength")
+            .unwrap()
+            .1
+    };
+    assert!((length(&lowered) - length(&rest) - 2.0).abs() < 1e-5);
 }
 
 #[test]

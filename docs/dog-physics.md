@@ -54,8 +54,8 @@ Historical human/animal fixtures remain unchanged. Dog reference (`dog`) and v0
 The lab's dog view now includes a dedicated source inspector. It exposes the solved
 left/right lower/upper tissue displacements, glottal aperture, glottal volume flow,
 lung boundary pressure, and sub/supraglottal pressures. Tube lanes show the solver's
-configured lengths and cross-sections. The head centerlines remain schematic and no
-longer display a centimetre ruler. The four-mass diagram magnifies displacement and
+configured lengths and cross-sections. The head is an original reference-informed
+sagittal cutaway, with no centimetre ruler or segmented scan. The four-mass diagram magnifies displacement and
 shows live snapshots; it is not a reconstructed slow-motion cycle or MRI anatomy.
 Reading telemetry is tested not to change the rendered samples, and the aperture is
 checked against the four solved displacements. The existing named-source telemetry
@@ -74,3 +74,22 @@ Reproduce with `cargo run --release -p chimera-cli -- render creature dog-physic
 and `render_dog_score` (score JSON, output WAV), then `bun tools/dog-physics-analysis.ts
 ../research/dog-physics` and `python3 ../research/dog-physics/make-review.py`.
 The website compares matched-level WAVs. Numerical checks do not replace user listening.
+
+The controllable cutaway shows tongue, palate/velum, epiglottis, jaw, larynx and
+oral/nasal spaces, informed by the University of Minnesota canine sagittal anatomy
+reference (https://vanat.ahc.umn.edu/carnLabs/Lab23/Img23-11.html). No atlas image
+is copied into the repository. Jaw opening changes the outlet profile; tongue
+elevation (0–1) applies up to 75% local area reduction, positioned along the oral
+tube at normalized 0.25–0.80. Tongue-root retraction (0–1) reduces the pharyngeal
+profile by up to 55%. Nasal opening controls the velum port. Larynx descent adds
+0–2 cm to pharyngeal length, preserving the fixed acoustic grid's CFL bound.
+These ranges and mappings are engineering assumptions, not measured canine muscle
+kinematics. New articulators at their defaults preserve the prior sound.
+
+Dragging, arrow keys and labeled sliders send the same real engine parameters.
+Manual edits cancel call automation; Sustain supplies breath for continuous
+listening. Reset anatomy restores resting geometry without changing tissue
+settings. The oral lumen follows solver cross-sections through an assumed fixed
+out-of-plane depth. Other tissue contours and jaw rotation are illustrative.
+The epiglottis and nasal turbinates are landmarks, not independently simulated
+structures. The four-mass physical source and its live inspector remain separate.
