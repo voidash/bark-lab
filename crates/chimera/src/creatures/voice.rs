@@ -7,11 +7,13 @@
 //! allocate nothing. Parameters and calls are addressed by index ([`CreatureDef::param_index`],
 //! [`CreatureDef::call_index`]).
 
+use super::score::{CreatureScore, SCORE_CALL, SCORE_ID};
+use super::types::CallPlan;
 use super::types::{CallTarget, CreatureDef, CreatureSim, Curve, GateTimes};
 use crate::airway::decimator::Decimator;
 use crate::math::{PI, exp, js_max, js_min, js_round, js_sign, pow, sqrt, tanh};
-use serde::ser::{SerializeMap, Serializer};
 use serde::Serialize;
+use serde::ser::{SerializeMap, Serializer};
 
 /// Per tube: areas (cm²) and acoustic pressure RMS (dyn/cm², static pressure removed) per node.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -68,7 +70,13 @@ impl Serialize for Tubes<'_> {
         }
         let mut m = s.serialize_map(Some(self.0.len()))?;
         for t in self.0 {
-            m.serialize_entry(t.name, &Entry { areas: F32s(&t.areas), rms: F32s(&t.rms) })?;
+            m.serialize_entry(
+                t.name,
+                &Entry {
+                    areas: F32s(&t.areas),
+                    rms: F32s(&t.rms),
+                },
+            )?;
         }
         m.end()
     }
@@ -99,7 +107,10 @@ struct ActiveCall {
     amp: f64,
 }
 
-const DEFAULT_GATE_TIMES: GateTimes = GateTimes { attack: 0.012, release: 0.06 };
+const DEFAULT_GATE_TIMES: GateTimes = GateTimes {
+    attack: 0.012,
+    release: 0.06,
+};
 
 /// JS truthiness of a number.
 fn truthy(x: f64) -> bool {
@@ -122,6 +133,7 @@ pub struct CreatureVoice {
     call_gate: f64,
     pub clock: f64,
     call: Option<ActiveCall>,
+    score_plan: CallPlan,
     /// one-shot events already fired, per key of the active call (preallocated for the longest call)
     fired: Vec<bool>,
     dec: Decimator,
@@ -145,7 +157,10 @@ impl CreatureVoice {
     /// A voice at output rate `fs_out`. `initial` sets parameters by index (a later entry for the
     /// same index wins; non-finite values are ignored, as missing keys were in TS).
     pub fn new(def: &'static CreatureDef, fs_out: f64, initial: &[(usize, f64)]) -> Self {
-        let m = js_max(1.0, js_round(def.oversample as f64 * if fs_out > 60000.0 { 0.5 } else { 1.0 })) as usize;
+        let m = js_max(
+            1.0,
+            js_round(def.oversample as f64 * if fs_out > 60000.0 { 0.5 } else { 1.0 }),
+        ) as usize;
         let fs = fs_out * m as f64;
         let sim = def.create(fs);
         let ctrl_every = 64 * m;
@@ -158,7 +173,12 @@ impl CreatureVoice {
             });
         }
         let rms_acc: Vec<Vec<f64>> = sim.tubes().iter().map(|(_, t)| vec![0.0; t.n]).collect();
-        let max_keys = def.calls.iter().map(|c| c.plan.keys.len()).max().unwrap_or(0);
+        let max_keys = def
+            .calls
+            .iter()
+            .map(|c| c.plan.keys.len())
+            .max()
+            .unwrap_or(0);
         let mut v = CreatureVoice {
             def,
             fs_out,
@@ -173,6 +193,7 @@ impl CreatureVoice {
             call_gate: 0.0,
             clock: 0.0,
             call: None,
+            score_plan: CallPlan::default(),
             fired: Vec::with_capacity(max_keys),
             dec: Decimator::new(m),
             ctrl_every,
@@ -212,13 +233,21 @@ impl CreatureVoice {
     /// params the active call automates take the new value when the call ends.
     pub fn set_params(&mut self, v: &[(usize, f64)]) {
         for &(k, x) in v {
-            let Some(d) = self.def.params.get(k) else { continue };
+            let Some(d) = self.def.params.get(k) else {
+                continue;
+            };
             if !x.is_finite() {
                 continue;
             }
             let v = js_min(d.max, js_max(d.min, x));
             self.performer[k] = v;
-            let owned = self.call.is_some_and(|c| self.def.calls[c.call].plan.owns_mask[k]);
+            let owned = self.call.is_some_and(|c| {
+                if c.call == SCORE_CALL {
+                    self.score_plan.owns_mask[k]
+                } else {
+                    self.def.calls[c.call].plan.owns_mask[k]
+                }
+            });
             if !owned {
                 self.target[k] = v;
             }
@@ -232,7 +261,9 @@ impl CreatureVoice {
     /// Play call `call` (an index into the def's calls; others are ignored); `pitch` scales the
     /// call's pitch params relative to its reference. (`amp` defaulted to 1 in TS.)
     pub fn play_call(&mut self, call: usize, pitch: Option<f64>, amp: f64) {
-        let Some(def) = self.def.calls.get(call) else { return };
+        let Some(def) = self.def.calls.get(call) else {
+            return;
+        };
         let r = def.pitch_ref.unwrap_or(0.0);
         self.end_call();
         let pitch = match pitch {
@@ -241,7 +272,12 @@ impl CreatureVoice {
         };
         self.fired.clear();
         self.fired.resize(def.plan.keys.len(), false);
-        self.call = Some(ActiveCall { call, t0: self.clock, pitch, amp });
+        self.call = Some(ActiveCall {
+            call,
+            t0: self.clock,
+            pitch,
+            amp,
+        });
     }
 
     /// [`play_call`](Self::play_call) by call id (a lookup; no allocation).
@@ -255,10 +291,33 @@ impl CreatureVoice {
         self.end_call();
     }
 
+    /// Validate/install a local score (allocates outside render). Invalid input
+    /// leaves the current performance intact. Returns start/end on this voice's clock.
+    pub fn play_score(&mut self, score: &CreatureScore) -> Result<(f64, f64), String> {
+        let plan = score.compile(self.def)?;
+        let duration = plan.keys.last().ok_or("empty compiled score")?.t + 0.05;
+        self.end_call();
+        self.fired.clear();
+        self.fired.resize(plan.keys.len(), false);
+        self.score_plan = plan;
+        self.call = Some(ActiveCall {
+            call: SCORE_CALL,
+            t0: self.clock,
+            pitch: 1.0,
+            amp: 1.0,
+        });
+        Ok((self.clock, self.clock + duration))
+    }
+
     /// End the active call and hand its parameters back to the performer.
     fn end_call(&mut self) {
         if let Some(c) = self.call {
-            for &n in &self.def.calls[c.call].plan.owns {
+            let plan = if c.call == SCORE_CALL {
+                &self.score_plan
+            } else {
+                &self.def.calls[c.call].plan
+            };
+            for &n in &plan.owns {
                 self.target[n] = self.performer[n];
             }
         }
@@ -268,7 +327,13 @@ impl CreatureVoice {
 
     pub fn active_call(&self) -> Option<&'static str> {
         let def = self.def;
-        self.call.map(|c| def.calls[c.call].id)
+        self.call.map(|c| {
+            if c.call == SCORE_CALL {
+                SCORE_ID
+            } else {
+                def.calls[c.call].id
+            }
+        })
     }
 
     /// Evaluate the active call's automation at the current clock (writes into targets).
@@ -276,7 +341,11 @@ impl CreatureVoice {
         let Some(c) = self.call else { return };
         let t = self.clock - c.t0;
         let def = self.def;
-        let plan = &def.calls[c.call].plan;
+        let plan = if c.call == SCORE_CALL {
+            &self.score_plan
+        } else {
+            &def.calls[c.call].plan
+        };
         let keys = &plan.keys;
         let last = &keys[keys.len() - 1];
         if t > last.t + 0.05 {
@@ -288,7 +357,9 @@ impl CreatureVoice {
             let mut prev: Option<(f64, f64)> = None;
             let mut next: Option<(f64, f64, Option<Curve>)> = None;
             for k in keys {
-                let Some(&(_, x)) = k.v.iter().find(|(m, _)| *m == n) else { continue };
+                let Some(&(_, x)) = k.v.iter().find(|(m, _)| *m == n) else {
+                    continue;
+                };
                 if k.t <= t {
                     prev = Some((k.t, x));
                 } else {
@@ -296,7 +367,9 @@ impl CreatureVoice {
                     break;
                 }
             }
-            let Some((prev_t, prev_x)) = prev else { continue };
+            let Some((prev_t, prev_x)) = prev else {
+                continue;
+            };
             let mut x = prev_x;
             if let Some((next_t, next_x, curve)) = next
                 && curve != Some(Curve::Step)
@@ -343,11 +416,19 @@ impl CreatureVoice {
             let a = 1.0 - exp(-dt / js_max(0.001, tau));
             let cur = self.value[i];
             let tgt = self.target[i];
-            self.value[i] = if p.log == Some(true) && cur > 0.0 && tgt > 0.0 { cur * pow(tgt / cur, a) } else { cur + (tgt - cur) * a };
+            self.value[i] = if p.log == Some(true) && cur > 0.0 && tgt > 0.0 {
+                cur * pow(tgt / cur, a)
+            } else {
+                cur + (tgt - cur) * a
+            };
         }
         let goal = js_max(self.gate_target, self.call_gate);
         let gt = self.def.gate_times.unwrap_or(DEFAULT_GATE_TIMES);
-        let tau = if goal > self.gate { gt.attack } else { gt.release };
+        let tau = if goal > self.gate {
+            gt.attack
+        } else {
+            gt.release
+        };
         self.gate += (goal - self.gate) * (1.0 - exp(-dt / tau));
         self.sim.control(&self.value, self.gate, dt);
         let every = self.ctrl_every;
@@ -410,7 +491,16 @@ impl CreatureVoice {
     pub fn new_telemetry(&self) -> CreatureTelemetry {
         CreatureTelemetry {
             params: Vec::with_capacity(self.def.params.len()),
-            tubes: self.sim.tubes().iter().map(|(name, t)| TubeTelemetry { name, areas: Vec::with_capacity(t.n), rms: Vec::with_capacity(t.n) }).collect(),
+            tubes: self
+                .sim
+                .tubes()
+                .iter()
+                .map(|(name, t)| TubeTelemetry {
+                    name,
+                    areas: Vec::with_capacity(t.n),
+                    rms: Vec::with_capacity(t.n),
+                })
+                .collect(),
             source: Vec::with_capacity(8),
             ..Default::default()
         }
@@ -446,7 +536,13 @@ impl CreatureVoice {
         self.out_count = 0;
         out.id = self.def.id;
         out.params.clear();
-        out.params.extend(self.def.params.iter().zip(&self.value).map(|(p, v)| (p.key, *v)));
+        out.params.extend(
+            self.def
+                .params
+                .iter()
+                .zip(&self.value)
+                .map(|(p, v)| (p.key, *v)),
+        );
         out.gate = self.gate;
         out.out_rms = out_rms;
         out.clock = self.clock;

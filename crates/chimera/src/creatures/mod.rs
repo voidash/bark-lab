@@ -6,6 +6,7 @@ pub mod dog_physics;
 pub mod elephant;
 pub mod mammal;
 pub mod recorded_dog;
+pub mod score;
 pub mod seal;
 pub mod songbird;
 pub mod types;

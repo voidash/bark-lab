@@ -9,7 +9,7 @@
 
 use crate::airway::network::{AirwayNetwork, Tube};
 use serde::ser::{SerializeMap, Serializer};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -81,9 +81,10 @@ impl ParamDef {
 }
 
 /// Interpolation from the previous key: linear (default), exponential (for frequencies), or step.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Curve {
+    #[default]
     Lin,
     Exp,
     Step,

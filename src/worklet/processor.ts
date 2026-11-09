@@ -176,6 +176,18 @@ class ChimeraProcessor extends AudioWorkletProcessor {
       case "stopCall":
         x.engine_stop_call(h);
         break;
+      case "creatureScore": {
+        try {
+          if (!this.creature) throw new Error("Select a creature before playing a score");
+          const timing = this.engineJson<{t0: number; end: number}>("engine_play_creature_score", m.score as unknown as Record<string, unknown>);
+          this.post({ type: "scoreStarted", creature: this.creature.id, ...timing });
+        } catch (error) {
+          if (error instanceof WebAssembly.RuntimeError) throw error;
+          // Invalid user score is recoverable; don't latch an engine failure.
+          this.post({ type: "scoreError", message: String(error) });
+        }
+        break;
+      }
     }
   }
 

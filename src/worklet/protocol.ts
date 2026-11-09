@@ -14,6 +14,10 @@ export interface PhraseMsg {
 
 export type BodyName = "male" | "female" | "child";
 
+export interface CreatureScore {
+  keys: { t: number; values: Record<string, number>; curve?: "lin" | "exp" | "step" }[];
+}
+
 export type ToWorklet =
   | { type: "body"; body: BodyMix }
   | { type: "artic"; values: Partial<HumanArtic>; tipFree?: boolean }
@@ -28,6 +32,7 @@ export type ToWorklet =
   | { type: "cparams"; values: Record<string, number> }
   | { type: "call"; id: string; pitch?: number; amp?: number }
   | { type: "stopCall" }
+  | { type: "creatureScore"; score: CreatureScore }
   /** beatbox sequencer: any subset of its state */
   | { type: "beat"; steps?: (BeatStep | null)[]; bpm?: number; swing?: number; playing?: boolean }
   /** end the open-ended gestures with this tag now (a sung note released) */
@@ -62,6 +67,8 @@ export interface CreatureTelemetryMessage {
 }
 
 export type FromWorklet =
+  | { type: "scoreStarted"; creature: string; t0: number; end: number }
+  | { type: "scoreError"; message: string }
   | { type: "ready"; sampleRate: number; body: BodyMix; nPh: number; nOr: number; creature: string }
   | TelemetryMessage
   | CreatureTelemetryMessage

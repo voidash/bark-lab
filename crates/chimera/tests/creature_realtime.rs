@@ -1,6 +1,8 @@
 //! The creature voice's real-time contract: once warm, rendering, control steps, parameter and
 //! gate changes, call playback and telemetry allocate nothing.
 use chimera::creatures::{CREATURES, CreatureVoice};
+use chimera::creatures::score::CreatureScore;
+use serde_json::json;
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 
@@ -35,6 +37,25 @@ fn allocs() -> usize {
 fn creature_voice_is_send() {
     fn send<T: Send>() {}
     send::<CreatureVoice>();
+}
+
+#[test]
+fn loaded_local_score_renders_and_cancels_without_allocation() {
+    let def = chimera::creatures::creature_by_id("dog-physics").unwrap();
+    let score: CreatureScore = serde_json::from_value(json!({"keys":[
+        {"t":0,"values":{"gate":1,"sourceModel":1,"pitch":330}},
+        {"t":0.2,"values":{"gate":0}}
+    ]})).unwrap();
+    let mut voice = CreatureVoice::new(def,48000.0,&[]);
+    let mut telemetry=voice.new_telemetry();
+    voice.play_score(&score).unwrap();
+    let mut buffer=[0.0;128];
+    voice.render(&mut buffer); voice.telemetry(&mut telemetry);
+    let before=allocs();
+    for _ in 0..120 { voice.render(&mut buffer); voice.telemetry(&mut telemetry); }
+    voice.stop_call();
+    for call in 0..def.calls.len() { voice.play_call(call,None,1.0); voice.render(&mut buffer); }
+    assert_eq!(allocs()-before,0,"loading a short score must not shrink the preset call buffer");
 }
 
 #[test]

@@ -13,6 +13,7 @@ use crate::anatomy::human::{ArticPatch, BodyMix, BodyName};
 use crate::control::beat_player::BeatPlayer;
 use crate::control::score::{Gesture, GestureScore};
 use crate::creatures::types::CreatureDef;
+use crate::creatures::score::CreatureScore;
 use crate::creatures::voice::{CreatureTelemetry, CreatureVoice};
 use crate::phonetics::beatbox::{BeatStep, MAX_SOUND_GESTURES};
 use crate::voice::human_voice::{HumanVoice, SourcePatch, VoiceTelemetry};
@@ -159,6 +160,11 @@ impl Engine {
         if let Some(c) = self.creature.as_mut() {
             c.stop_call();
         }
+    }
+
+    /// Install a validated local gestural score on the active creature (allocates).
+    pub fn play_creature_score(&mut self, score: &CreatureScore) -> Result<(f64, f64), String> {
+        self.creature.as_mut().ok_or("select a creature before loading a score")?.play_score(score)
     }
 
     /// The creature's telemetry (see [`CreatureVoice::telemetry`]); false when the human plays.

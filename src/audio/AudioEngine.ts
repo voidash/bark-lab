@@ -8,6 +8,7 @@ import type { ToWorklet, FromWorklet, TelemetryMessage, PlannedMessage, Creature
 import type { BodyMix } from "../wasm/types.ts";
 import type { HumanArtic } from "../wasm/types.ts";
 import type { VoiceSource } from "../wasm/types.ts";
+import type { CreatureScore } from "../worklet/protocol.ts";
 
 type Listener = (t: TelemetryMessage) => void;
 
@@ -42,6 +43,8 @@ export class AudioEngine {
   lastPlan: PlannedMessage | null = null;
   private speakId = 0;
   error: string | null = null;
+  lastCreatureScore: { creature: string; t0: number; end: number } | null = null;
+  scoreError: string | null = null;
 
   /** The human voice's clock now (s), extrapolated from the latest telemetry; null if none. */
   voiceClock(): number | null {
@@ -121,6 +124,12 @@ export class AudioEngine {
         for (const l of this.plannedListeners) l(m);
       } else if (m.type === "ready") {
         for (const l of this.readyListeners) l();
+      } else if (m.type === "scoreStarted") {
+        this.lastCreatureScore = m;
+        this.scoreError = null;
+      } else if (m.type === "scoreError") {
+        this.scoreError = m.message;
+        console.error("score:", m.message);
       } else if (m.type === "error") {
         this.error = m.message;
         console.error("worklet:", m.message);
@@ -164,6 +173,11 @@ export class AudioEngine {
 
   stopCall(): void {
     this.send({ type: "stopCall" });
+  }
+
+  playCreatureScore(score: CreatureScore): void {
+    this.scoreError = null;
+    this.send({ type: "creatureScore", score });
   }
 
   stopSpeech(): void {

@@ -37,6 +37,7 @@ pub mod api;
 use chimera::anatomy::human::{ArticPatch, BodyMix, N_ARTIC};
 use chimera::control::score::{Gesture, Label, N_CONTROL, Targets};
 use chimera::engine::{Engine, MAX_SCHEDULE};
+use chimera::creatures::score::{CreatureScore, SCORE_ID};
 use chimera::phonetics::beatbox::BeatStep;
 use chimera::voice::human_voice::{SourcePatch, VoiceTelemetry};
 
@@ -489,7 +490,7 @@ pub unsafe extern "C" fn engine_set_creature(h: *mut Handle, ptr: *const u8, len
     let info = serde_json::json!({
         "id": def.id,
         "params": def.params.iter().map(|p| p.key).collect::<Vec<_>>(),
-        "calls": def.calls.iter().map(|c| c.id).collect::<Vec<_>>(),
+        "calls": def.calls.iter().map(|c| c.id).chain([SCORE_ID]).collect::<Vec<_>>(),
         "tubes": t.tubes.iter().map(|tb| serde_json::json!({ "name": tb.name, "n": tb.areas.len() })).collect::<Vec<_>>(),
         "sources": t.source.iter().map(|(k, _)| *k).collect::<Vec<_>>(),
     });
@@ -535,6 +536,25 @@ pub unsafe extern "C" fn engine_stop_call(h: *mut Handle) {
     handle!(h).engine.stop_call();
 }
 
+/// Install a local creature gestural score. Allocates outside rendering; rejects
+/// invalid input without ending the current call. Result: {t0,end} or {error}.
+/// # Safety
+/// `h` must be live and `ptr..ptr+len` readable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn engine_play_creature_score(h: *mut Handle, ptr: *const u8, len: usize) -> u32 {
+    let h = handle!(h);
+    if len > 1024 * 1024 { return api::set_result(Err("creature score exceeds 1 MiB".into())); }
+    let bytes = unsafe { core::slice::from_raw_parts(ptr, len) };
+    let score: CreatureScore = match serde_json::from_slice(bytes) {
+        Ok(score) => score,
+        Err(e) => return api::set_result(Err(format!("invalid creature score: {e}"))),
+    };
+    match h.engine.play_creature_score(&score) {
+        Ok((t0, end)) => api::set_result(Ok(serde_json::json!({"t0":t0,"end":end}))),
+        Err(e) => api::set_result(Err(e)),
+    }
+}
+
 /// Take the creature's telemetry (resets its RMS measurements) into a flat f64 block: gate,
 /// outRms, clock, the active call's index (−1: none), the params in def order, then per tube (in
 /// the switch's `tubes` order) its areas then its RMS, then the source values. Null when the human
@@ -552,7 +572,7 @@ pub unsafe extern "C" fn engine_creature_telemetry(h: *mut Handle) -> *const f64
     let b = &mut h.ctele_block;
     b.clear();
     let call = match (t.call, h.engine.creature()) {
-        (Some(id), Some(c)) => c.def.call_index(id).map_or(-1.0, |i| i as f64),
+        (Some(id), Some(c)) => if id == SCORE_ID { c.def.calls.len() as f64 } else { c.def.call_index(id).map_or(-1.0, |i| i as f64) },
         _ => -1.0,
     };
     b.extend_from_slice(&[t.gate, t.out_rms, t.clock, call]);
