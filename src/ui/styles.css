@@ -2589,6 +2589,15 @@ input[type="range"]::-moz-range-thumb {
   grid-template-areas: "gallery gallery" "wf wf" "folds folds" "calls cparams" "airway airway" "keys keys";
 }
 .s-canine-source { grid-area: folds; }
+.right-bestiary.with-dog-song { grid-template-rows: auto minmax(min-content, 1fr) auto minmax(min-content, .7fr) auto; }
+.right-bestiary.with-dog-song.with-canine-source { grid-template-rows: auto minmax(min-content, 1fr) auto auto minmax(min-content, .7fr) auto; }
+.with-dog-song .s-gallery .specimens { position: static; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.with-dog-song .s-gallery .thumb { height: 64px; }
+.dog-song-demo { padding: 0 0 12px; margin-bottom: 12px; border-bottom: 1px solid var(--blue-dim); font: 12px/1.5 "Archivo", system-ui, sans-serif; color: var(--white); }
+.dog-song-demo h3 { margin: 0 0 8px; font-size: 15px; line-height: 1.4; }
+.dog-song-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.dog-song-demo p { margin: 8px 0 0; }
+.dog-song-demo progress { display: block; width: 100%; height: 5px; margin-top: 10px; accent-color: var(--amber); }
 .canine-source-link { text-decoration: none; }
 .s-canine-source:target { border-color: var(--amber); }
 .canine-source-diagram { min-height: 190px; height: 190px; position: relative; }
@@ -2686,8 +2695,8 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .calls-body {
-  position: absolute;
-  inset: 0;
+  position: static;
+  flex: 1 1 auto;
   padding: 4px 14px 10px;
   display: flex;
   flex-direction: column;
@@ -2787,6 +2796,8 @@ input[type="range"]::-moz-range-thumb {
     grid-template-rows: none;
     grid-template-areas: "gallery gallery" "wf wf" "calls cparams" "airway airway" "keys keys";
   }
+  .right-bestiary.with-dog-song,
+  .right-bestiary.with-dog-song.with-canine-source { grid-template-rows: none; }
   .right-bestiary .screen-body {
     min-height: 190px;
   }

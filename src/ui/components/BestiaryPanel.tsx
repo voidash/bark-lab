@@ -9,6 +9,7 @@ import { EncoderPages, type EncoderPage } from "./Encoder.tsx";
 import { Spectrogram } from "./Spectrogram.tsx";
 import { CreatureTubes } from "./CreatureTubes.tsx";
 import { CanineSource, CanineResearch } from "./CanineSource.tsx";
+import { DogSongDemo } from "./DogSongDemo.tsx";
 
 /** Thumbnail: the creature's outline in blue with its airway traced in amber. */
 const Thumb = memo(function Thumb({ def }: { def: CreatureDef }) {
@@ -27,12 +28,12 @@ const Thumb = memo(function Thumb({ def }: { def: CreatureDef }) {
   );
 });
 
-function Gallery() {
+function Gallery({ comparison = false }: { comparison?: boolean }) {
   const creature = useStore((s) => s.creature);
   const setCreature = useStore((s) => s.setCreature);
   return (
     <div className="specimens">
-      {CREATURES.map((c) => (
+      {CREATURES.filter(c => !comparison || c.id === "dog" || c.id === "dog-physics").map((c) => (
         <button key={c.id} className={`specimen${c.id === creature ? " on" : ""}`} onClick={() => setCreature(c.id)} aria-pressed={c.id === creature}>
           <Thumb def={c} />
           <span className="specimen-name">{c.name}</span>
@@ -50,8 +51,13 @@ function Calls({ def }: { def: CreatureDef }) {
   const keyCall = useStore((s) => s.keyCall);
   const setKeyCall = useStore((s) => s.setKeyCall);
   const live = useLiveCreature(def.id);
+  const songMode = !!new URLSearchParams(window.location.search).get("song");
+  const Manual = songMode ? "details" : "div";
   return (
     <div className="calls-body">
+      {songMode && <DogSongDemo />}
+      <Manual className="manual-calls">
+      {songMode && <summary>Manual calls and keyboard mode</summary>}
       <div className="calls">
         {def.calls.map((c) => (
           <button key={c.id} className={`call${live?.call === c.id ? " playing" : ""}`} onClick={() => playCall(c.id)} title={c.hint}>
@@ -74,6 +80,7 @@ function Calls({ def }: { def: CreatureDef }) {
         ))}
       </div>
       <p className="creature-blurb">{def.blurb}</p>
+      </Manual>
       {(live?.source.fault ?? 0) > 0 && <p className="error" role="alert">The physical voice became unstable and stopped. Select another voice, then return to restart it.</p>}
     </div>
   );
@@ -114,10 +121,11 @@ function Params({ def }: { def: CreatureDef }) {
 export function BestiaryRight() {
   const creature = useStore((s) => s.creature);
   const def = creatureById(creature);
+  const comparison = !!new URLSearchParams(window.location.search).get("song");
   return (
-    <div className={`right right-bestiary${creature === "dog-physics" ? " with-canine-source" : ""}`}>
-      <Screen className="s-gallery" title="Creatures" sub={`${CREATURES.length} specimens`}>
-        <Gallery />
+    <div className={`right right-bestiary${creature === "dog-physics" ? " with-canine-source" : ""}${comparison ? " with-dog-song" : ""}`}>
+      <Screen className="s-gallery" title={comparison ? "Dog comparison" : "Creatures"} sub={comparison ? "Recorded reference / physical candidate" : `${CREATURES.length} specimens`}>
+        <Gallery comparison={comparison} />
       </Screen>
       <Screen className="s-wf" title="Spectrogram" sub="Waterfall of the call">
         <Spectrogram />
