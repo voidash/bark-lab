@@ -51,6 +51,24 @@ latch, stop output and surface in telemetry/UI; the oscillator is not silently r
 Historical human/animal fixtures remain unchanged. Dog reference (`dog`) and v0
 (`dog-model`) stay available for comparison.
 
+The lab's dog view now includes a dedicated source inspector. It exposes the solved
+left/right lower/upper tissue displacements, glottal aperture, glottal volume flow,
+lung boundary pressure, and sub/supraglottal pressures. Tube lanes show the solver's
+configured lengths and cross-sections. The head centerlines remain schematic and no
+longer display a centimetre ruler. The four-mass diagram magnifies displacement and
+shows live snapshots; it is not a reconstructed slow-motion cycle or MRI anatomy.
+Reading telemetry is tested not to change the rendered samples, and the aperture is
+checked against the four solved displacements. The existing named-source telemetry
+layout carries these scalars; its worklet round trip remains covered by the ABI test.
+
+This corrects an interface gap relative to upstream CHIMERA's human Play view, which
+has separate tract, fold stroboscope, flow and spectral displays. The Bestiary path had
+only a schematic source ring and tube lanes. Human 3D anatomy and its phase-locked
+stroboscope remain inappropriate substitutes for canine geometry and irregular cycles.
+The dog inspector links canine tract measurements, bark HNR research, measured canine
+fluid–structure work and Moore's real-time mammalian synthesizer, alongside the model's
+generic tissue constants and unvalidated canine identity.
+
 Reproduce with `cargo run --release -p chimera-cli -- render creature dog-physics
 ../research/dog-physics --split`, examples `probe_dog_regimes` (optionally `--focus`)
 and `render_dog_score` (score JSON, output WAV), then `bun tools/dog-physics-analysis.ts

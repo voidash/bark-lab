@@ -8,6 +8,7 @@ import { Chip, Screen } from "./Screen.tsx";
 import { EncoderPages, type EncoderPage } from "./Encoder.tsx";
 import { Spectrogram } from "./Spectrogram.tsx";
 import { CreatureTubes } from "./CreatureTubes.tsx";
+import { CanineSource, CanineResearch } from "./CanineSource.tsx";
 
 /** Thumbnail: the creature's outline in blue with its airway traced in amber. */
 const Thumb = memo(function Thumb({ def }: { def: CreatureDef }) {
@@ -113,20 +114,24 @@ export function BestiaryRight() {
   const creature = useStore((s) => s.creature);
   const def = creatureById(creature);
   return (
-    <div className="right right-bestiary">
+    <div className={`right right-bestiary${creature === "dog-physics" ? " with-canine-source" : ""}`}>
       <Screen className="s-gallery" title="Creatures" sub={`${CREATURES.length} specimens`}>
         <Gallery />
       </Screen>
       <Screen className="s-wf" title="Spectrogram" sub="Waterfall of the call">
         <Spectrogram />
       </Screen>
+      {creature === "dog-physics" && <Screen id="canine-source" className="s-canine-source" title="Vocal folds" sub="Four masses / live snapshots">
+        <div className="canine-source-diagram"><CanineSource /></div>
+        <CanineResearch />
+      </Screen>}
       <Screen className="s-calls" title="Calls">
         {def && <Calls def={def} />}
       </Screen>
       <Screen className="s-cparams" title="Controls">
         {def && <Params def={def} />}
       </Screen>
-      <Screen className="s-airway" title="Airway" sub={creature === "dog" ? "Illustrative geometry" : "Each tube unrolled"}>
+      <Screen className="s-airway" title="Airway" sub={creature === "dog" ? "Illustrative geometry" : creature === "dog-physics" ? "Solver lengths / live pressure" : "Each tube unrolled"}>
         <CreatureTubes />
       </Screen>
       <Screen className="s-keys s-keys-compact" title="Keys" sub="The held voice or a call, at the key's pitch">

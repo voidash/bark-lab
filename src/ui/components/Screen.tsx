@@ -4,10 +4,10 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
  * One screen on the wall: a black panel with a thin frame and a single-stroke title.
  * The body always has a positive size (see .screen-body in styles.css); canvases fill it.
  */
-export function Screen(props: { title: string; sub?: string; focus?: boolean; className?: string; tools?: ReactNode; children: ReactNode; label?: string }) {
-  const { title, sub, focus, className, tools, children, label } = props;
+export function Screen(props: { title: string; sub?: string; focus?: boolean; className?: string; tools?: ReactNode; children: ReactNode; label?: string; id?: string }) {
+  const { title, sub, focus, className, tools, children, label, id } = props;
   return (
-    <section className={`screen${focus ? " focus" : ""}${className ? " " + className : ""}`} aria-label={label ?? title}>
+    <section id={id} className={`screen${focus ? " focus" : ""}${className ? " " + className : ""}`} aria-label={label ?? title}>
       <header className="screen-head">
         <h2 className="screen-title">{title}</h2>
         {sub && <span className="screen-sub">{sub}</span>}

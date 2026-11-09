@@ -162,6 +162,22 @@ impl TwoMassFolds {
         Ok(self.area)
     }
 
+    /// Instantaneous left lower/upper and right lower/upper displacements, in cm.
+    /// This is a snapshot of the solved tissue state, not a prescribed cycle.
+    pub fn displacements(&self) -> [f64; 4] {
+        [self.state[0], self.state[2], self.state[4], self.state[6]]
+    }
+
+    /// Total resting aperture, in cm², shared between the left and right folds.
+    pub fn rest_area(&self) -> f64 {
+        self.rest_area
+    }
+
+    /// Effective fold length in this reduced model, in cm; not a breed measurement.
+    pub fn length(&self) -> f64 {
+        1.4
+    }
+
     /// Tissue speed, useful for source telemetry; no assumed cyclic phase.
     pub fn speed(&self) -> f64 {
         sqrt(

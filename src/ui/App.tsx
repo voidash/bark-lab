@@ -114,12 +114,14 @@ function ViewToggles() {
   const setView = useStore((s) => s.setView);
   const bestiary = useStore((s) => s.mode === "bestiary");
   const recordedDog = useStore((s) => s.mode === "bestiary" && s.creature === "dog");
+  const physicalDog = useStore((s) => s.mode === "bestiary" && s.creature === "dog-physics");
   return (
     <div className="view-toggles">
       {!bestiary && <Toggle label="3D" checked={view.threeD} onChange={(v) => setView({ threeD: v })} />}
       {!recordedDog && <Toggle label="Sound pressure" checked={view.pressure} onChange={(v) => setView({ pressure: v })} />}
       {!bestiary && <Toggle label="Airflow" checked={view.particles} onChange={(v) => setView({ particles: v })} />}
       <Toggle label={bestiary ? "Labels" : "Measurements"} checked={view.calipers} onChange={(v) => setView({ calipers: v })} />
+      {physicalDog && <a className="chip canine-source-link" href="#canine-source">Vocal folds</a>}
       {!bestiary && <Toggle label="Grid" checked={view.grid} onChange={(v) => setView({ grid: v })} />}
     </div>
   );

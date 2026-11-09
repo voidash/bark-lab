@@ -130,6 +130,38 @@ impl CreatureSim for PhysicalDog {
         out.push(("glottis", (self.folds.speed() / 100.0).min(1.0)));
         // A fault is latched and exposed, never hidden by resetting the mechanical state.
         out.push(("fault", if self.fault.is_some() { 1.0 } else { 0.0 }));
+        let [left_lower, left_upper, right_lower, right_upper] = self.folds.displacements();
+        out.extend([
+            ("leftLower", left_lower),
+            ("leftUpper", left_upper),
+            ("rightLower", right_lower),
+            ("rightUpper", right_upper),
+            ("glottalArea", self.folds.area),
+            ("restArea", self.folds.rest_area()),
+            ("foldLength", self.folds.length()),
+            ("glottalFlow", self.a.net.u[self.a.glottis]),
+            ("lungPressure", self.a.net.p[self.a.lungs] / CMH2O),
+            (
+                "subPressure",
+                self.a.net.p[self.a.trachea.last_node()] / CMH2O,
+            ),
+            (
+                "supraPressure",
+                self.a.net.p[self.a.pharynx.first_node()] / CMH2O,
+            ),
+            (
+                "tracheaLength",
+                self.a.net.tube_length[self.a.trachea.index],
+            ),
+            (
+                "pharynxLength",
+                self.a.net.tube_length[self.a.pharynx.index],
+            ),
+            ("oralLength", self.a.net.tube_length[self.a.oral.index]),
+        ]);
+        if let Some(nasal) = self.a.nasal {
+            out.push(("nasalLength", self.a.net.tube_length[nasal.index]));
+        }
     }
 }
 

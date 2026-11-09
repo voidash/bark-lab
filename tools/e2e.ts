@@ -189,6 +189,8 @@ async function run(viewport: { width: number; height: number }, tag: string) {
   if ((await page.locator(".specimen.on .specimen-name").textContent())?.trim() !== "Dog physics") errors.push("[dog-start] physical Dog is not selected on a fresh visit");
   if ((await page.locator(".left .screen-title").textContent()) !== "Dog vocal tract") errors.push("[dog-start] the left screen does not identify the dog vocal tract");
   if ((await page.getByRole("img", { name: /^Dog vocal tract:/ }).count()) !== 1) errors.push("[dog-start] no accessible dog vocal tract drawing");
+  if ((await page.getByRole("img", { name: /^Canine larynx:/ }).count()) !== 1) errors.push("[dog-start] no physical canine source inspector");
+  if ((await page.getByText("Research and model assumptions", { exact: true }).count()) !== 1) errors.push("[dog-start] canine research evidence is missing");
   if (await page.locator(".body-control").count()) errors.push("[dog-start] human body controls are visible on the dog view");
   if ((await page.getByRole("checkbox", { name: "Sound pressure", exact: true }).count()) !== 1) errors.push("[dog-start] physical voice lacks a pressure toggle");
   await page.screenshot({ path: `${outDir}/dog-start.png` });
@@ -200,9 +202,10 @@ async function run(viewport: { width: number; height: number }, tag: string) {
   const dog = await page.evaluate(() => {
     // @ts-expect-error debug handle
     const t = window.__chimeraEngine.latestCreature.t;
-    return { id: t.id, tubes: Object.keys(t.tubes) };
+    return { id: t.id, tubes: Object.keys(t.tubes), source: t.source };
   });
   if (!["trachea", "pharynx", "oral", "nasal"].every((name) => dog.tubes.includes(name))) errors.push(`[dog-start] missing canine airway branches: ${JSON.stringify(dog)}`);
+  if (!["leftLower", "leftUpper", "rightLower", "rightUpper", "glottalArea", "glottalFlow", "subPressure", "supraPressure", "lungPressure", "tracheaLength", "pharynxLength", "oralLength", "nasalLength"].every(k => Number.isFinite(dog.source[k]))) errors.push("[dog-start] mechanical inspector has missing/non-finite engine state");
   logs.push(`[dog-start] creature ${JSON.stringify(dog)}`);
   for (const id of ["dog-physics", "dog"]) {
     const physical = id === "dog-physics";

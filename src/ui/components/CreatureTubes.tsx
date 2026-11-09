@@ -19,16 +19,19 @@ export function CreatureTubes() {
     const tele = live ?? previewTelemetry(def, st.cparams[def.id]);
     const lanes = def.visual.tubes.filter((t) => tele.tubes[t.tube]);
     if (!lanes.length) return;
+    const measured = def.id === "dog-physics" && lanes.every(l => Number.isFinite(tele.source[`${l.tube}Length`]) && tele.source[`${l.tube}Length`] > 0);
+    const longest = measured ? Math.max(...lanes.map(l => tele.source[`${l.tube}Length`])) : 1;
     let dMax = 0.01;
     for (const l of lanes) for (const a of tele.tubes[l.tube].areas) dMax = Math.max(dMax, a2d(a));
-    const labelW = 120;
+    const labelW = measured ? Math.min(165, w * 0.46) : 120;
     const laneH = (h - 6) / lanes.length;
     lanes.forEach((l, li) => {
       const data = tele.tubes[l.tube];
       const y = 3 + laneH * (li + 0.5);
       label(ctx, (l.label ?? l.tube).toUpperCase(), 14, y + 3, { size: 9, color: V.blueMid, ls: 0.16 });
+      if (measured) label(ctx, `${tele.source[`${l.tube}Length`].toFixed(1)} CM`, labelW - 8, y + 3, { size: 8, color: V.amber, align: "right" });
       const n = data.areas.length;
-      const x0 = labelW, x1 = w - 14;
+      const x0 = labelW, x1 = labelW + (w - 14 - labelW) * (measured ? tele.source[`${l.tube}Length`] / longest : 1);
       const dx = (x1 - x0) / n;
       const r = (k: number) => Math.max(0.8, (a2d(data.areas[k]) / dMax) * (laneH - 6) * 0.5);
       const topL: Pt[] = [], botL: Pt[] = [];

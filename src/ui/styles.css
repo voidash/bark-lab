@@ -2584,6 +2584,23 @@ input[type="range"]::-moz-range-thumb {
   min-height: 80px;
 }
 
+.right-bestiary.with-canine-source {
+  grid-template-rows: minmax(160px, 196fr) minmax(120px, 150fr) auto auto minmax(100px, 150fr) auto;
+  grid-template-areas: "gallery gallery" "wf wf" "folds folds" "calls cparams" "airway airway" "keys keys";
+}
+.s-canine-source { grid-area: folds; }
+.canine-source-link { text-decoration: none; }
+.s-canine-source:target { border-color: var(--amber); }
+.canine-source-diagram { min-height: 190px; height: 190px; position: relative; }
+.canine-source-diagram canvas { display: block; width: 100%; height: 100%; }
+.canine-research { padding: 5px 14px 12px; font-family: "Archivo", system-ui, sans-serif; font-size: 13px; line-height: 1.6; color: var(--white); }
+.canine-research summary { cursor: pointer; color: var(--blue); }
+.canine-research summary:focus-visible { outline: 1px solid var(--amber); outline-offset: 4px; }
+.canine-research p { margin: 9px 0 0; }
+.canine-research ul { margin: 9px 0 0; padding-left: 18px; }
+.canine-research li + li { margin-top: 7px; }
+.canine-research a { color: var(--amber); text-underline-offset: 3px; }
+
 /* the gallery is drawings that scale with the screen, laid over its body like a canvas */
 .s-gallery .specimens {
   position: absolute;
@@ -2764,6 +2781,10 @@ input[type="range"]::-moz-range-thumb {
   .right-bestiary {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "gallery" "wf" "calls" "cparams" "airway" "keys";
+  }
+  .right-bestiary.with-canine-source {
+    grid-template-rows: none;
+    grid-template-areas: "gallery" "wf" "folds" "calls" "cparams" "airway" "keys";
   }
   .s-gallery .specimens {
     grid-template-columns: repeat(2, minmax(0, 1fr));

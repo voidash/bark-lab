@@ -9,6 +9,38 @@ fn rms(x: &[f32]) -> f64 {
 }
 
 #[test]
+fn mechanical_telemetry_matches_the_solved_aperture_and_does_not_change_audio() {
+    let def = creature_by_id("dog-physics").unwrap();
+    let mut observed = CreatureVoice::new(def, 48000.0, &[]);
+    let mut control = CreatureVoice::new(def, 48000.0, &[]);
+    observed.set_gate(1.0);
+    control.set_gate(1.0);
+    let mut telemetry = observed.new_telemetry();
+    let mut moving = false;
+    for _ in 0..150 {
+        let mut a = [0.0; 128];
+        let mut b = [0.0; 128];
+        observed.render(&mut a);
+        control.render(&mut b);
+        assert_eq!(a, b, "inspection changed the simulated sound");
+        observed.telemetry(&mut telemetry);
+        let value = |key| telemetry.source.iter().find(|(k, _)| *k == key).unwrap().1;
+        assert!(telemetry.source.iter().all(|(_, v)| v.is_finite()));
+        let lower =
+            value("restArea") + value("foldLength") * (value("leftLower") + value("rightLower"));
+        let upper =
+            value("restArea") + value("foldLength") * (value("leftUpper") + value("rightUpper"));
+        assert!((value("glottalArea") - lower.min(upper).max(0.0)).abs() < 1e-12);
+        assert!(value("glottalArea") >= 0.0);
+        assert!((value("tracheaLength") - 18.0).abs() < 1e-10);
+        assert!((value("pharynxLength") + value("oralLength") - 17.0).abs() < 1e-10);
+        assert!((value("nasalLength") - 13.0).abs() < 1e-10);
+        moving |= value("leftLower").abs() > 1e-4;
+    }
+    assert!(moving, "no tissue motion reached the inspector");
+}
+
+#[test]
 fn length_control_changes_airway_resonances_without_changing_the_source_preset() {
     let def = creature_by_id("dog-physics").unwrap();
     let frequencies = linspace(100.0, 5000.0, 981);

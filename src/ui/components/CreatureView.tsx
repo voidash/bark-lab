@@ -201,12 +201,13 @@ export function CreatureView() {
       if (pitchText) label(ctx, pitchText, w - 16, 50, { size: 11, color: V.amber, align: "right", ls: 0.12, alpha: 0.8 });
     }
     // a scale bar: 1 drawing unit (about a centimetre)
+    const canine = def.id.startsWith("dog");
     const unit = vw > 60 ? 10 : 1;
     const by = h - slotH - 10;
     seg(ctx, 18, by, 18 + unit * sc, by, V.blueMid, 1.2);
     seg(ctx, 18, by - 4, 18, by + 4, V.blueMid, 1.2);
     seg(ctx, 18 + unit * sc, by - 4, 18 + unit * sc, by + 4, V.blueMid, 1.2);
-    label(ctx, `${unit} CM`, 26 + unit * sc, by + 3, { size: 9, color: V.blueMid, ls: 0.14 });
+    label(ctx, canine ? "SCHEMATIC · NOT TO SCALE" : `${unit} CM`, 26 + unit * sc, by + 3, { size: 9, color: V.blueMid, ls: 0.14 });
 
     // the first four parameters, OP-1 style, across the bottom (the encoders on the right share the colours)
     const params = def.params.slice(0, 4);
